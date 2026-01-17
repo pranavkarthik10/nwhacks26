@@ -82,7 +82,7 @@ const healthTools = [
 // Process query and determine which tools to use
 export async function processHealthQuery(query: string): Promise<HealthQueryResponse> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
     // First, analyze the query to determine which health data to fetch
     const analysisPrompt = `You are a health data assistant. Analyze this user query and determine which health metrics they want to see:
@@ -211,52 +211,113 @@ function simpleQueryAnalysis(query: string) {
 
 // Prepare chart data from health results
 function prepareChartData(toolResults: any, chartType: "line" | "bar" | null) {
-  const firstResult = Object.values(toolResults)[0] as any;
+  console.log("Preparing chart data from:", JSON.stringify(toolResults, null, 2));
   
-  if (!firstResult?.success || !firstResult?.data) {
+  // Get all successful results
+  const successfulResults = Object.entries(toolResults)
+    .filter(([_, result]: [string, any]) => result?.success && result?.data)
+    .map(([name, result]: [string, any]) => ({ name, ...result }));
+
+  if (successfulResults.length === 0) {
+    console.log("No successful results to chart");
     return null;
   }
 
-  // Handle daily step samples
-  if (firstResult.data.samples && Array.isArray(firstResult.data.samples)) {
-    const samples = firstResult.data.samples.slice(0, 7); // Last 7 days
+  // Try to find result with samples array (for trends)
+  const resultWithSamples = successfulResults.find((r: any) => 
+    r.data.samples && Array.isArray(r.data.samples) && r.data.samples.length > 0
+  );
+
+  if (resultWithSamples) {
+    const samples = resultWithSamples.data.samples.slice(-7); // Last 7 samples
+    console.log("Found samples:", samples.length);
     
-    return {
-      type: chartType || "bar",
-      title: "Last 7 Days",
+    if (samples.length === 0) {
+      return null;
+    }
+
+    // Determine chart type and title based on tool name
+    let title = "Health Data";
+    let color = "#0000FF";
+    let type: "line" | "bar" = chartType || "bar";
+
+    if (resultWithSamples.name.includes("Steps")) {
+      title = "Steps - Last 7 Days";
+      color = "#FF8904";
+      type = "bar";
+    } else if (resultWithSamples.name.includes("HeartRate")) {
+      title = "Heart Rate Trend";
+      color = "#FF6467";
+      type = "line";
+    } else if (resultWithSamples.name.includes("Sleep")) {
+      title = "Sleep Duration - Last 7 Days";
+      color = "#21BCFF";
+      type = "bar";
+    }
+
+    const chartData = {
+      type,
+      title,
       data: {
-        labels: samples.map((s: any) => {
-          const date = new Date(s.startDate);
-          return format(date, "MMM dd");
+        labels: samples.map((s: any, i: number) => {
+          if (s.startDate) {
+            const date = new Date(s.startDate);
+            return format(date, "MMM dd");
+          }
+          return `Day ${i + 1}`;
         }),
         datasets: [
           {
-            data: samples.map((s: any) => s.value || 0),
+            data: samples.map((s: any) => {
+              // Handle different value formats
+              if (typeof s.value === 'number') return Math.round(s.value);
+              if (s.quantity) return Math.round(s.quantity);
+              return 0;
+            }),
           },
         ],
       },
-      color: "#0000FF",
+      color,
     };
+
+    console.log("Chart data prepared:", JSON.stringify(chartData, null, 2));
+    return chartData;
   }
 
-  // Handle heart rate data with multiple samples
-  if (firstResult.data.samples && firstResult.data.average !== undefined) {
-    const samples = firstResult.data.samples.slice(0, 10); // Last 10 readings
-    
-    return {
-      type: "line",
-      title: "Heart Rate",
-      data: {
-        labels: samples.map((_: any, i: number) => `${i + 1}`),
-        datasets: [
-          {
-            data: samples.map((s: any) => s.value || 0),
-          },
-        ],
-      },
-      color: "#FF6467",
-    };
+  // If no samples, but we have multiple data points, create a summary chart
+  if (successfulResults.length > 1) {
+    const labels: string[] = [];
+    const data: number[] = [];
+
+    successfulResults.forEach((result: any) => {
+      if (result.name.includes("Steps")) {
+        labels.push("Steps");
+        data.push(Math.round(result.data.steps || 0));
+      } else if (result.name.includes("Calories")) {
+        labels.push("Calories");
+        data.push(Math.round(result.data.calories || 0));
+      } else if (result.name.includes("HeartRate") && result.data.average) {
+        labels.push("Heart Rate");
+        data.push(Math.round(result.data.average));
+      } else if (result.name.includes("Sleep") && result.data.totalHours) {
+        labels.push("Sleep (hrs)");
+        data.push(Math.round(result.data.totalHours * 10) / 10);
+      }
+    });
+
+    if (labels.length > 0 && data.some(d => d > 0)) {
+      return {
+        type: "bar",
+        title: "Today's Summary",
+        data: {
+          labels,
+          datasets: [{ data }],
+        },
+        color: "#0000FF",
+      };
+    }
   }
 
+  console.log("No chart data could be prepared");
   return null;
 }

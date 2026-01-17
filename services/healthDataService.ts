@@ -55,7 +55,7 @@ export async function getDailySteps(dateRange: DateRange): Promise<HealthDataRes
       if (err) {
         resolve({ success: false, error: err });
       } else {
-        resolve({ success: true, data: results });
+        resolve({ success: true, data: { samples: results } });
       }
     });
   });

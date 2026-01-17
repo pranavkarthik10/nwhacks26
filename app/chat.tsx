@@ -9,10 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { HealthChart } from "@/components/HealthChart";
-import * as HealthService from "@/services/healthDataService";
 import { processHealthQuery } from "@/utils/aiHealthTools";
 
 interface Message {
@@ -23,22 +24,110 @@ interface Message {
   timestamp: Date;
 }
 
+const CHAT_STORAGE_KEY = "@health_chat_history";
+const WELCOME_MESSAGE: Message = {
+  id: "welcome",
+  role: "assistant",
+  content: "Hi! I'm your health assistant. I can help you analyze your health data.\n\n📊 Try these queries:\n• \"Show my steps for the last week\" (with chart)\n• \"How did I sleep last night?\"\n• \"What's my heart rate today?\"\n• \"Show my heart rate trends\"\n• \"Give me today's summary\"",
+  timestamp: new Date(),
+};
+
 export default function ChatScreen() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content: "Hi! I'm your health assistant. I can help you analyze your health data. Try asking me about your steps, heart rate, sleep, or calories!",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // Load chat history on mount
   useEffect(() => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
+    loadChatHistory();
+  }, []);
+
+  // Save chat history whenever messages change
+  useEffect(() => {
+    if (!isLoadingHistory && messages.length > 0) {
+      saveChatHistory();
+    }
+  }, [messages, isLoadingHistory]);
+
+  // Auto-scroll when messages update
+  useEffect(() => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   }, [messages]);
+
+  const loadChatHistory = async () => {
+    try {
+      const historyJson = await AsyncStorage.getItem(CHAT_STORAGE_KEY);
+      if (historyJson) {
+        const history = JSON.parse(historyJson);
+        // Convert timestamp strings back to Date objects
+        const messagesWithDates = history.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp),
+        }));
+        setMessages(messagesWithDates);
+      }
+    } catch (error) {
+      console.error("Error loading chat history:", error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const saveChatHistory = async () => {
+    try {
+      await AsyncStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    } catch (error) {
+      console.error("Error saving chat history:", error);
+    }
+  };
+
+  const clearChatHistory = () => {
+    Alert.alert(
+      "Clear Chat History",
+      "Are you sure you want to clear all chat history? This cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem(CHAT_STORAGE_KEY);
+              setMessages([WELCOME_MESSAGE]);
+            } catch (error) {
+              console.error("Error clearing chat history:", error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const addTestChart = () => {
+    const testMessage: Message = {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: "Here's a test chart with sample data to verify charts are working correctly.",
+      chartData: {
+        type: "bar",
+        title: "Test Chart - Sample Steps Data",
+        data: {
+          labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+          datasets: [{ data: [5243, 6891, 4502, 8234, 7123, 9456, 6789] }],
+        },
+        color: "#FF8904",
+      },
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, testMessage]);
+  };
 
   const handleSend = async () => {
     if (!inputText.trim() || isLoading) return;
@@ -123,12 +212,35 @@ export default function ChatScreen() {
     );
   };
 
+  if (isLoadingHistory) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#0000FF" />
+        <Text style={styles.loadingText}>Loading chat history...</Text>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={100}
     >
+      {/* Header with clear button */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Health AI Chat</Text>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity onPress={addTestChart} style={styles.testButton}>
+            <Ionicons name="flask-outline" size={18} color="#0000FF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={clearChatHistory} style={styles.clearButton}>
+            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+            <Text style={styles.clearButtonText}>Clear</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView
         ref={scrollViewRef}
         style={styles.messagesContainer}
@@ -154,6 +266,7 @@ export default function ChatScreen() {
           placeholderTextColor="#999"
           multiline
           maxLength={500}
+          editable={!isLoading}
         />
         <TouchableOpacity
           style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
@@ -175,6 +288,51 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  centerContent: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#808080",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+    backgroundColor: "#fff",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#000",
+  },
+  headerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  testButton: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: "#f0f0f0",
+  },
+  clearButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  clearButtonText: {
+    fontSize: 14,
+    color: "#FF3B30",
   },
   messagesContainer: {
     flex: 1,

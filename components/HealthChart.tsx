@@ -17,7 +17,11 @@ export const HealthChart: React.FC<HealthChartProps> = ({
   title, 
   color = "#0000FF" 
 }) => {
-  if (!data || !data.labels || !data.datasets) {
+  console.log("HealthChart rendering:", { type, title, data: JSON.stringify(data) });
+
+  // Validate data structure
+  if (!data || !data.labels || !data.datasets || !Array.isArray(data.datasets) || data.datasets.length === 0) {
+    console.log("Chart validation failed: missing required fields");
     return (
       <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
@@ -25,6 +29,35 @@ export const HealthChart: React.FC<HealthChartProps> = ({
       </View>
     );
   }
+
+  // Ensure we have valid data points
+  const hasValidData = data.datasets[0].data && 
+                       Array.isArray(data.datasets[0].data) && 
+                       data.datasets[0].data.length > 0;
+
+  if (!hasValidData) {
+    console.log("Chart validation failed: no valid data points");
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.noData}>No data available for this period</Text>
+      </View>
+    );
+  }
+
+  // Ensure all data values are valid numbers, replace any NaN/undefined with 0
+  const cleanedData = {
+    ...data,
+    datasets: data.datasets.map((dataset: any) => ({
+      ...dataset,
+      data: dataset.data.map((val: any) => {
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+      }),
+    })),
+  };
+
+  console.log("Chart rendering with cleaned data:", cleanedData);
 
   const chartConfig = {
     backgroundColor: "#ffffff",
@@ -43,31 +76,47 @@ export const HealthChart: React.FC<HealthChartProps> = ({
     },
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-      {type === "line" ? (
-        <LineChart
-          data={data}
-          width={screenWidth - 40}
-          height={220}
-          chartConfig={chartConfig}
-          bezier
-          style={styles.chart}
-        />
-      ) : (
-        <BarChart
-          data={data}
-          width={screenWidth - 40}
-          height={220}
-          chartConfig={chartConfig}
-          style={styles.chart}
-          yAxisLabel=""
-          yAxisSuffix=""
-        />
-      )}
-    </View>
-  );
+  try {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>{title}</Text>
+        {type === "line" ? (
+          <LineChart
+            data={cleanedData}
+            width={screenWidth - 40}
+            height={220}
+            chartConfig={chartConfig}
+            bezier
+            style={styles.chart}
+            withInnerLines={true}
+            withOuterLines={true}
+            withVerticalLines={false}
+            withHorizontalLines={true}
+          />
+        ) : (
+          <BarChart
+            data={cleanedData}
+            width={screenWidth - 40}
+            height={220}
+            chartConfig={chartConfig}
+            style={styles.chart}
+            yAxisLabel=""
+            yAxisSuffix=""
+            showValuesOnTopOfBars={true}
+            fromZero={true}
+          />
+        )}
+      </View>
+    );
+  } catch (error) {
+    console.error("Error rendering chart:", error);
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.noData}>Error displaying chart</Text>
+      </View>
+    );
+  }
 };
 
 const styles = StyleSheet.create({
