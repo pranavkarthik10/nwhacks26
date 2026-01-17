@@ -1,5 +1,5 @@
 import useHealthData from "@/hooks/useHealthData";
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -57,42 +57,46 @@ export default function Index() {
     return hours.toFixed(1); // e.g. "7.5"
   };
 
-  if (error) {
-    Alert.alert("Cannot fetch health data", "Please try again!", [
-      {
-        text: "Try Again",
-        onPress: () => {
-          refetch();
+  useEffect(() => {
+    if (error && !success) {
+      Alert.alert("Cannot fetch health data", "Please try again!", [
+        {
+          text: "Try Again",
+          onPress: () => {
+            refetch();
+          },
         },
-      },
-    ]);
-  }
-
-  if (success && hasPermissions) {
-    if (
-      steps === 0 &&
-      calories === 0 &&
-      heartRate.length === 0 &&
-      sleep.length === 0
-    ) {
-      Alert.alert(
-        "No Health Data Available",
-        "Open the Apple Health app to view or add your health data for today.",
-        [
-          {
-            text: "Go to Health",
-            onPress: () => {
-              Linking.openURL("x-apple-health://");
-            },
-          },
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-        ]
-      );
+      ]);
     }
-  }
+  }, [error, success]);
+
+  useEffect(() => {
+    if (success && hasPermissions) {
+      if (
+        steps === 0 &&
+        calories === 0 &&
+        heartRate.length === 0 &&
+        sleep.length === 0
+      ) {
+        Alert.alert(
+          "No Health Data Available",
+          "Open the Apple Health app to view or add your health data for today.",
+          [
+            {
+              text: "Go to Health",
+              onPress: () => {
+                Linking.openURL("x-apple-health://");
+              },
+            },
+            {
+              text: "Cancel",
+              style: "cancel",
+            },
+          ]
+        );
+      }
+    }
+  }, [success, hasPermissions, steps, calories, heartRate, sleep])
 
   const handleRevokeAccess = async () => {
     try {

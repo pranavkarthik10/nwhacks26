@@ -10,12 +10,13 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.lusieeas.MyHealthApp",
+      "bundleIdentifier": "com.pranavkarthik.MyHeatlh",
       "infoPlist": {
         "NSHealthShareUsageDescription": "This app needs access to your health data to provide personalized insights.",
         "NSHealthUpdateUsageDescription": "This app needs to write workout data to Apple Health.",
         "NSHealthClinicalHealthRecordsShareUsageDescription": "This app needs access to clinical health records for comprehensive analysis."
-      }
+      },
+      "appleTeamId": "ZC5P42MMZ2"
     },
     "android": {
       "adaptiveIcon": {
