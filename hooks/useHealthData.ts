@@ -55,6 +55,7 @@ const useHealthData = (date: Date) => {
   const checkAndRequestPermissions = (callback: () => void) => {
     if (!ensureHealthKitAvailable()) return;
 
+    console.log("Checking HealthKit permissions...");
     RCTAppleHealthKit.getAuthStatus(permissions, (err: string, results: any) => {
       if (err) {
         setError(`Error checking permissions: ${err}`);
@@ -62,21 +63,25 @@ const useHealthData = (date: Date) => {
         return;
       }
 
+      console.log("Permission status:", results);
       const readPermissions = permissions.permissions.read;
       const allGranted = readPermissions.every(
         (perm) => results[perm] === 2 // 2 = authorized
       );
 
       if (allGranted) {
+        console.log("All permissions granted ✅");
         setHasPermissions(true);
         callback();
       } else {
+        console.log("Requesting HealthKit permissions...");
         RCTAppleHealthKit.initHealthKit(permissions, (initErr: string) => {
           if (initErr) {
             setError(`Error initializing HealthKit: ${initErr}`);
             console.error("Error initializing HealthKit:", initErr);
             return;
           }
+          console.log("HealthKit initialized ✅");
           setHasPermissions(true);
           callback();
         });
@@ -95,14 +100,43 @@ const useHealthData = (date: Date) => {
     setSuccess(false);
     setError(null);
 
+    let completedFetches = 0;
+    let successfulFetches = 0;
+    let fetchErrors: string[] = [];
+    const totalFetches = 4;
+
+    const checkCompletion = () => {
+      completedFetches++;
+      console.log(`Health fetch progress: ${completedFetches}/${totalFetches}, ${successfulFetches} successful`);
+      
+      if (completedFetches === totalFetches) {
+        console.log(`All fetches complete! ${successfulFetches}/${totalFetches} successful`);
+        
+        if (successfulFetches > 0) {
+          setSuccess(true);
+          // Only set error if ALL fetches failed
+          if (successfulFetches === 0) {
+            setError(`Failed to fetch: ${fetchErrors.join(", ")}`);
+          } else if (fetchErrors.length > 0) {
+            console.warn(`Some fetches failed: ${fetchErrors.join(", ")}`);
+          }
+        } else {
+          setError(fetchErrors.length > 0 ? `Failed to fetch: ${fetchErrors.join(", ")}` : "Failed to fetch health data");
+        }
+        setDataTimestamp(new Date().toISOString());
+      }
+    };
+
     // Steps
     RCTAppleHealthKit.getStepCount(fetchOptions, (err: any, results: any) => {
       if (err) {
-        setError(`Error fetching steps: ${err}`);
-        return;
+        console.warn("Error fetching steps:", err);
+        fetchErrors.push("steps");
+      } else {
+        setSteps(results.value || 0);
+        successfulFetches++;
       }
-      setSteps(results.value);
-      setSuccess(true);
+      checkCompletion();
     });
 
     // Calories
@@ -110,11 +144,13 @@ const useHealthData = (date: Date) => {
       fetchOptions,
       (err: any, results: any[]) => {
         if (err) {
-          setError(`Error fetching calories: ${err}`);
-          return;
+          console.warn("Error fetching calories:", err);
+          fetchErrors.push("calories");
+        } else {
+          setCalories(results.reduce((sum, sample) => sum + sample.value, 0) || 0);
+          successfulFetches++;
         }
-        setCalories(results.reduce((sum, sample) => sum + sample.value, 0));
-        setSuccess(true);
+        checkCompletion();
       }
     );
 
@@ -123,11 +159,13 @@ const useHealthData = (date: Date) => {
       fetchOptions,
       (err: any, results: HealthValue[]) => {
         if (err) {
-          setError(`Error fetching heart rate: ${err}`);
-          return;
+          console.warn("Error fetching heart rate:", err);
+          fetchErrors.push("heart rate");
+        } else {
+          setHeartRate(results || []);
+          successfulFetches++;
         }
-        setHeartRate(results);
-        setSuccess(true);
+        checkCompletion();
       }
     );
 
@@ -136,15 +174,15 @@ const useHealthData = (date: Date) => {
       fetchOptions,
       (err: any, results: HealthValue[]) => {
         if (err) {
-          setError(`Error fetching sleep: ${err}`);
-          return;
+          console.warn("Error fetching sleep:", err);
+          fetchErrors.push("sleep");
+        } else {
+          setSleep(results || []);
+          successfulFetches++;
         }
-        setSleep(results);
-        setSuccess(true);
+        checkCompletion();
       }
     );
-
-    setDataTimestamp(new Date().toISOString());
   };
 
   // Core trigger function

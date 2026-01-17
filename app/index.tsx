@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Linking,
+  ScrollView,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
@@ -57,27 +58,45 @@ export default function Index() {
     return hours.toFixed(1); // e.g. "7.5"
   };
 
+  // Track if we've shown alerts to prevent duplicates
+  const hasShownErrorRef = React.useRef(false);
+  const hasShownNoDataRef = React.useRef(false);
+
   useEffect(() => {
-    if (error && !success) {
-      Alert.alert("Cannot fetch health data", "Please try again!", [
+    if (error && !success && !hasShownErrorRef.current) {
+      hasShownErrorRef.current = true;
+      Alert.alert("Cannot fetch health data", error || "Please try again!", [
         {
           text: "Try Again",
           onPress: () => {
+            hasShownErrorRef.current = false;
             refetch();
+          },
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => {
+            hasShownErrorRef.current = false;
           },
         },
       ]);
     }
+    // Reset if successful
+    if (success) {
+      hasShownErrorRef.current = false;
+    }
   }, [error, success]);
 
   useEffect(() => {
-    if (success && hasPermissions) {
+    if (success && hasPermissions && !hasShownNoDataRef.current) {
       if (
         steps === 0 &&
         calories === 0 &&
         heartRate.length === 0 &&
         sleep.length === 0
       ) {
+        hasShownNoDataRef.current = true;
         Alert.alert(
           "No Health Data Available",
           "Open the Apple Health app to view or add your health data for today.",
@@ -86,14 +105,21 @@ export default function Index() {
               text: "Go to Health",
               onPress: () => {
                 Linking.openURL("x-apple-health://");
+                hasShownNoDataRef.current = false;
               },
             },
             {
               text: "Cancel",
               style: "cancel",
+              onPress: () => {
+                hasShownNoDataRef.current = false;
+              },
             },
           ]
         );
+      } else {
+        // Reset if we have data
+        hasShownNoDataRef.current = false;
       }
     }
   }, [success, hasPermissions, steps, calories, heartRate, sleep])
@@ -116,100 +142,122 @@ export default function Index() {
     }
   };
 
+  const formatTimestamp = (timestamp: string | null) => {
+    if (!timestamp) return "Not synced";
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
   const SyncDataView = () => (
-    <View style={styles.syncDataView}>
-      <Text style={styles.heading}>Synced Health Data</Text>
-      <Text style={styles.timestampText}>
-        Last Update on: {dataTimestamp ?? "--"}
-      </Text>
-      <View style={[styles.dataContainer, { backgroundColor: "#FF890470" }]}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="footsteps-sharp" size={36} color="black" />
-          <Text style={styles.heading}>Steps</Text>
-        </View>
-        <View style={styles.valueContainer}>
-          <Text style={styles.valueText}>{steps || "--"}</Text>
-          <Text style={styles.unitText}>Steps</Text>
-        </View>
+    <ScrollView style={styles.syncDataView} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={styles.headerSection}>
+        <Text style={styles.greeting}>Your Health</Text>
+        <Text style={styles.dateText}>
+          {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+        </Text>
       </View>
-      <View style={[styles.dataContainer, { backgroundColor: "#FF646770" }]}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="heart" size={36} color="black" />
-          <Text style={styles.heading}>Heart Rate</Text>
-        </View>
-        <View style={styles.valueContainer}>
-          <Text style={styles.valueText}>{getLatestHeartRate(heartRate)}</Text>
-          <Text style={styles.unitText}>bmp</Text>
-        </View>
+
+      {/* Last Update */}
+      <View style={styles.lastUpdateContainer}>
+        <View style={styles.statusIndicator} />
+        <Text style={styles.lastUpdateText}>
+          Last synced at {formatTimestamp(dataTimestamp)}
+        </Text>
       </View>
-      <View style={[styles.dataContainer, { backgroundColor: "#A684FF70" }]}>
-        <View style={styles.iconContainer}>
-          <MaterialIcons name="local-fire-department" size={36} color="black" />
-          <Text style={styles.heading}>Calories</Text>
+
+      {/* Health Cards */}
+      <View style={styles.cardsContainer}>
+        <TouchableOpacity style={[styles.cardLarge, { backgroundColor: "#FF9500" }]} activeOpacity={0.9}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconBg}>
+              <Ionicons name="footsteps" size={24} color="#FF9500" />
+            </View>
+            <Text style={styles.cardLabel}>Steps</Text>
+          </View>
+          <Text style={styles.cardValue}>{steps ? steps.toLocaleString() : "--"}</Text>
+          <Text style={styles.cardUnit}>steps today</Text>
+        </TouchableOpacity>
+
+        <View style={styles.cardRow}>
+          <TouchableOpacity style={[styles.cardSmall, { backgroundColor: "#FF2D55" }]} activeOpacity={0.9}>
+            <View style={styles.cardIconBg}>
+              <Ionicons name="heart" size={20} color="#FF2D55" />
+            </View>
+            <Text style={styles.cardValueSmall}>{getLatestHeartRate(heartRate)}</Text>
+            <Text style={styles.cardUnitSmall}>BPM</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.cardSmall, { backgroundColor: "#FF3B30" }]} activeOpacity={0.9}>
+            <View style={styles.cardIconBg}>
+              <MaterialIcons name="local-fire-department" size={20} color="#FF3B30" />
+            </View>
+            <Text style={styles.cardValueSmall}>{calories || "--"}</Text>
+            <Text style={styles.cardUnitSmall}>kcal</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.valueContainer}>
-          <Text style={styles.valueText}>{calories || "--"}</Text>
-          <Text style={styles.unitText}>Kcal</Text>
-        </View>
+
+        <TouchableOpacity style={[styles.cardLarge, { backgroundColor: "#5856D6" }]} activeOpacity={0.9}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconBg}>
+              <Ionicons name="moon" size={24} color="#5856D6" />
+            </View>
+            <Text style={styles.cardLabel}>Sleep</Text>
+          </View>
+          <Text style={styles.cardValue}>{getTotalSleep(sleep)}</Text>
+          <Text style={styles.cardUnit}>hours last night</Text>
+        </TouchableOpacity>
       </View>
-      <View style={[styles.dataContainer, { backgroundColor: "#21BCFF70" }]}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="bed" size={36} color="black" />
-          <Text style={styles.heading}>Sleep</Text>
-        </View>
-        <View style={styles.valueContainer}>
-          <Text style={styles.valueText}>{getTotalSleep(sleep)}</Text>
-          <Text style={styles.unitText}>hrs</Text>
-        </View>
-      </View>
-    </View>
+
+      <View style={styles.bottomPadding} />
+    </ScrollView>
   );
 
   const NoDataView = () => (
     <View style={styles.noDataView}>
-      <Text style={styles.heading}>No sync data available</Text>
-      <Text style={styles.subHeading}>
-        Connect with your Apple Health to see insights here.
-      </Text>
-      <TouchableOpacity style={styles.syncBtn} onPress={onPress}>
-        <Text style={styles.syncBtnText}>Sync Data</Text>
-      </TouchableOpacity>
+      <View style={styles.noDataContent}>
+        <View style={styles.noDataIcon}>
+          <Ionicons name="heart-outline" size={64} color="#007AFF" />
+        </View>
+        <Text style={styles.noDataTitle}>Connect Health Data</Text>
+        <Text style={styles.noDataSubtitle}>
+          Sync with Apple Health to see your steps, heart rate, sleep, and more.
+        </Text>
+        <TouchableOpacity style={styles.syncBtn} onPress={onPress} activeOpacity={0.8}>
+          <Ionicons name="sync" size={20} color="#fff" />
+          <Text style={styles.syncBtnText}>Connect Health</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
   const BottomActions = () => (
     <View style={styles.bottomActions}>
+      <TouchableOpacity style={styles.refreshBtn} onPress={refetch} activeOpacity={0.8}>
+        <Ionicons name="refresh" size={22} color="#007AFF" />
+        <Text style={styles.refreshBtnText}>Refresh</Text>
+      </TouchableOpacity>
       <TouchableOpacity
-        style={styles.revokeBtn}
+        style={styles.settingsBtn}
         onPress={() => {
           Alert.alert(
-            "Revoke Access",
-            "Please go to Settings > Health > Data Access & Devices > MyHealthApp.",
+            "Health Settings",
+            "Manage your health data permissions",
             [
-              {
-                text: "Go to settings",
-                onPress: () => {
-                  handleRevokeAccess();
-                },
-              },
-              {
-                text: "Cancel",
-                style: "cancel",
-              },
+              { text: "Open Settings", onPress: handleRevokeAccess },
+              { text: "Cancel", style: "cancel" },
             ]
           );
         }}
+        activeOpacity={0.8}
       >
-        <Text style={styles.revokeBtnText}>Revoke Access</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.refreshBtn} onPress={refetch}>
-        <MaterialIcons name="refresh" size={24} color="black" />
+        <Ionicons name="settings-outline" size={22} color="#8E8E93" />
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={styles.mainConatainer}>
+    <View style={styles.mainContainer}>
       {hasPermissions && success && !error ? SyncDataView() : NoDataView()}
       {hasPermissions && success && !error ? BottomActions() : null}
     </View>
@@ -217,104 +265,213 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  mainConatainer: {
+  mainContainer: {
     flex: 1,
-    alignItems: "center",
-    padding: 16,
+    backgroundColor: "#F2F2F7",
   },
+  
+  // Sync Data View
   syncDataView: {
     flex: 1,
-    width: "100%",
+    paddingHorizontal: 20,
+  },
+  headerSection: {
+    paddingTop: 60,
+    paddingBottom: 8,
+  },
+  greeting: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    letterSpacing: -0.5,
+  },
+  dateText: {
+    fontSize: 16,
+    color: "#8E8E93",
+    marginTop: 4,
+  },
+  lastUpdateContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#34C759",
+    marginRight: 8,
+  },
+  lastUpdateText: {
+    fontSize: 14,
+    color: "#8E8E93",
+  },
+  
+  // Cards
+  cardsContainer: {
+    gap: 12,
+  },
+  cardLarge: {
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  cardRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  cardSmall: {
+    flex: 1,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  cardHeader: {
+    flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    marginBottom: 16,
   },
+  cardIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cardLabel: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  cardValue: {
+    fontSize: 48,
+    fontWeight: "700",
+    color: "#fff",
+    letterSpacing: -1,
+  },
+  cardValueSmall: {
+    fontSize: 36,
+    fontWeight: "700",
+    color: "#fff",
+    letterSpacing: -1,
+    marginTop: 12,
+  },
+  cardUnit: {
+    fontSize: 16,
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 4,
+  },
+  cardUnitSmall: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 2,
+  },
+  bottomPadding: {
+    height: 120,
+  },
+
+  // No Data View
   noDataView: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  noDataContent: {
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  noDataIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(0,122,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  noDataTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#1C1C1E",
+    textAlign: "center",
+    letterSpacing: -0.5,
+  },
+  noDataSubtitle: {
+    fontSize: 16,
+    color: "#8E8E93",
+    textAlign: "center",
+    marginTop: 8,
+    lineHeight: 22,
+  },
+  syncBtn: {
+    marginTop: 32,
+    borderRadius: 16,
+    backgroundColor: "#007AFF",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-  },
-  heading: {
-    fontSize: 22,
-    color: "#000000",
-    textAlign: "center",
-    fontFamily: "Poppins",
-  },
-  subHeading: {
-    fontSize: 18,
-    color: "#808080",
-    textAlign: "center",
-    fontFamily: "Poppins",
-  },
-  syncBtn: {
-    width: "100%",
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
+    paddingVertical: 16,
     paddingHorizontal: 32,
-    justifyContent: "center",
-    backgroundColor: "#0000FF",
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   syncBtnText: {
     fontSize: 18,
-    color: "#FFFFFF",
-    fontFamily: "Poppins",
-    textAlign: "center",
+    fontWeight: "600",
+    color: "#fff",
   },
-  dataContainer: {
-    width: "100%",
-    padding: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderRadius: 12,
-  },
-  iconContainer: {
-    alignItems: "flex-start",
-  },
-  valueContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    marginTop: 5,
-  },
-  valueText: {
-    fontSize: 30,
-    color: "#000000",
-    fontFamily: "Poppins",
-  },
-  unitText: {
-    fontSize: 14,
-    fontFamily: "Poppins",
-    color: "#000000",
-    marginLeft: 5,
-    marginBottom: 5,
-  },
+
+  // Bottom Actions
   bottomActions: {
+    position: "absolute",
+    bottom: 100,
+    left: 20,
+    right: 20,
     flexDirection: "row",
-    gap: 10,
-    paddingVertical: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
   },
   refreshBtn: {
-    padding: 13,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#000000",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
   },
-  revokeBtn: {
-    flex: 1,
-    padding: 13,
-    borderRadius: 12,
-    backgroundColor: "#0000FF",
+  refreshBtnText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#007AFF",
   },
-  revokeBtnText: {
-    fontSize: 18,
-    color: "#FFFFFF",
-    textAlign: "center",
-    fontFamily: "Poppins",
-  },
-  timestampText: {
-    fontSize: 14,
-    color: "#808080",
-    textAlign: "center",
-    fontFamily: "Poppins",
+  settingsBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
   },
 });
