@@ -18,6 +18,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { calculateWeeklyTrends, WeeklyTrendsData } from "@/services/weeklyTrendsService";
+import { getUserPreferences } from "@/utils/storage";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -40,12 +41,24 @@ export default function Index() {
   const [currentPage, setCurrentPage] = useState(0);
   const [trends, setTrends] = useState<WeeklyTrendsData | null>(null);
   const [loadingTrends, setLoadingTrends] = useState(false);
+  const [firstName, setFirstName] = useState<string>("");
   const scrollViewRef = useRef<ScrollView>(null);
 
   console.log(steps, calories, heartRate, sleep, dataTimestamp);
   console.log("Success: ", success);
   console.log("Error: ", error);
   console.log("Permission: ", hasPermissions);
+
+  // Load user name on mount
+  useEffect(() => {
+    const loadUserName = async () => {
+      const prefs = await getUserPreferences();
+      if (prefs?.firstName) {
+        setFirstName(prefs.firstName);
+      }
+    };
+    loadUserName();
+  }, []);
 
   // Load trends data when health data is available
   useEffect(() => {
@@ -269,11 +282,24 @@ export default function Index() {
     });
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      return "Good morning";
+    } else if (hour < 18) {
+      return "Good afternoon";
+    } else {
+      return "Good night";
+    }
+  };
+
   const SyncDataView = () => (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerSection}>
-        <Text style={styles.greeting}>Your Health</Text>
+        <Text style={styles.greeting}>
+          {getGreeting()}{firstName ? `, ${firstName}` : ""}
+        </Text>
         <View style={styles.headerRow}>
           <Text style={styles.dateText}>
             {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}

@@ -271,21 +271,21 @@ function prepareChartData(toolResults: any, chartType: "line" | "bar" | null) {
       return null;
     }
 
-    // Determine chart type and title based on tool name
-    let title = "Health Data";
+    // Determine chart type and base info based on tool name
+    let titlePrefix = "Health Data";
     let color = "#0000FF";
     let type: "line" | "bar" = chartType || "bar";
 
     if (resultWithSamples.name.includes("Steps")) {
-      title = "Steps - Last 7 Days";
+      titlePrefix = "Steps";
       color = "#FF8904";
       type = "bar";
     } else if (resultWithSamples.name.includes("HeartRate")) {
-      title = "Heart Rate Trend";
+      titlePrefix = "Heart Rate Trend";
       color = "#FF6467";
       type = "line";
     } else if (resultWithSamples.name.includes("Sleep")) {
-      title = "Sleep Duration - Last 7 Days";
+      titlePrefix = "Sleep Duration";
       color = "#21BCFF";
       type = "bar";
     }
@@ -293,6 +293,7 @@ function prepareChartData(toolResults: any, chartType: "line" | "bar" | null) {
     // Group sleep data by day if needed
     let labels: string[] = [];
     let chartDatasets: number[] = [];
+    let numDays = 0;
 
     if (resultWithSamples.name.includes("Sleep")) {
       // Aggregate sleep by END day (sleep that ends on a day counts for that day)
@@ -360,8 +361,36 @@ function prepareChartData(toolResults: any, chartType: "line" | "bar" | null) {
       // Only show days that have data, don't backfill empty days
       labels = uniqueDays.map(day => format(new Date(day), "MMM dd"));
       chartDatasets = uniqueDays.map(day => Math.round((sleepByDay[day] || 0) * 10) / 10);
+      numDays = uniqueDays.length;
+    } else if (resultWithSamples.name.includes("Steps")) {
+      // For steps, the samples should already be daily aggregates from getDailySteps
+      // Each sample should have: {value: number, startDate: string, endDate: string}
+      // Group by day to ensure we have daily totals
+      const stepsByDay: { [key: string]: number } = {};
+      
+      allSamples.forEach((s: any) => {
+        if (s.startDate && (s.value !== undefined || s.quantity !== undefined)) {
+          const dayKey = format(new Date(s.startDate), "yyyy-MM-dd");
+          const stepValue = s.value !== undefined ? s.value : s.quantity;
+          
+          // Aggregate steps for the same day (in case there are multiple entries)
+          if (stepsByDay[dayKey]) {
+            stepsByDay[dayKey] += stepValue;
+          } else {
+            stepsByDay[dayKey] = stepValue;
+          }
+        }
+      });
+      
+      // Get sorted days
+      const uniqueDays = Object.keys(stepsByDay).sort();
+      console.log(`Found steps data for ${uniqueDays.length} unique days:`, uniqueDays);
+      
+      labels = uniqueDays.map(day => format(new Date(day), "MMM dd"));
+      chartDatasets = uniqueDays.map(day => Math.round(stepsByDay[day] || 0));
+      numDays = uniqueDays.length;
     } else {
-      // For other metrics, limit to last 7 samples and show their dates
+      // For other metrics (heart rate, etc.), show individual samples
       const samples = allSamples.slice(-7);
       
       labels = samples.map((s: any) => {
@@ -377,12 +406,23 @@ function prepareChartData(toolResults: any, chartType: "line" | "bar" | null) {
         if (s.quantity) return Math.round(s.quantity);
         return 0;
       });
+      numDays = samples.length;
     }
 
     // Only create chart if we have data
     if (labels.length === 0 || !chartDatasets.some(d => d > 0)) {
       console.log("No valid chart data after processing");
       return null;
+    }
+
+    // Create dynamic title based on number of days
+    let title = titlePrefix;
+    if (resultWithSamples.name.includes("Steps") || resultWithSamples.name.includes("Sleep")) {
+      if (numDays === 1) {
+        title += " - Today";
+      } else if (numDays > 1) {
+        title += ` - Last ${numDays} Day${numDays > 1 ? 's' : ''}`;
+      }
     }
 
     const chartData = {
