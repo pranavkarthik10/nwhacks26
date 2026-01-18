@@ -77,6 +77,29 @@ export function VoiceChatOverlay({
     }).start();
   }, [visible, fadeAnim]);
 
+  // Pulse animation for listening state only
+  useEffect(() => {
+    if (voiceState === "listening") {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.15,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [voiceState, pulseAnim]);
 
   // Waveform animation based on audio level
   useEffect(() => {

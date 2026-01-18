@@ -97,8 +97,8 @@ export async function processHealthQuery(
     // Build conversation context for tool selection
     let contextSummary = "";
     if (conversationHistory.length > 0) {
-      // Include last few messages for context (limit to avoid token issues)
-      const recentMessages = conversationHistory.slice(-4);
+      // Include last 3 messages for context
+      const recentMessages = conversationHistory.slice(-3);
       contextSummary = "\n\nRecent conversation:\n" + 
         recentMessages.map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
     }
@@ -145,11 +145,10 @@ Respond in JSON format ONLY (no markdown, no explanation):
       }
     }
 
-    // Generate response with health data context and conversation history
-    // Build messages array for chat-style generation
+    // Build system prompt with raw health data (sent only once, not repeated in history)
     const hasData = Object.keys(toolResults).length > 0;
     const dataContext = hasData 
-      ? `\n\nYou have access to this health data:\n${JSON.stringify(toolResults, null, 2)}\n\nUse this data to answer the user's question.`
+      ? `\n\n=== HEALTH DATA ===\n${JSON.stringify(toolResults, null, 2)}\n\nUse this data to answer the user's question with specific numbers and insights.`
       : "";
 
     const chatMessages: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
@@ -161,7 +160,8 @@ Respond in JSON format ONLY (no markdown, no explanation):
 
     // Add conversation history (limit to recent messages to manage token count)
     // The conversation history already includes the current query as the last message
-    const recentHistory = conversationHistory.slice(-6);
+    // Can include more history now since health data is only in system prompt, not repeated
+    const recentHistory = conversationHistory.slice(-8);
     recentHistory.forEach(msg => {
       chatMessages.push({
         role: msg.role,
@@ -169,7 +169,7 @@ Respond in JSON format ONLY (no markdown, no explanation):
       });
     });
 
-    console.log(`💬 Sending ${chatMessages.length} messages to LLM (1 system + ${recentHistory.length} chat)`);
+    console.log(`💬 Sending ${chatMessages.length} messages to LLM (1 system w/ health data + ${recentHistory.length} chat)`);
 
     const responseText = await llmService.chat(chatMessages);
 

@@ -29,6 +29,15 @@ export default function TabsLayout() {
           fontWeight: "600",
         },
         headerShown: false,
+        lazy: false,
+      }}
+      sceneContainerStyle={{ 
+        flex: 1,
+      }}
+      screenListeners={{
+        tabPress: e => {
+          // Allow normal tab press navigation
+        },
       }}
     >
       <Tabs.Screen
@@ -38,6 +47,19 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons 
               name={focused ? "heart" : "heart-outline"} 
+              size={24} 
+              color={color} 
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="trends"
+        options={{
+          title: "Trends",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "trending-up" : "trending-up"} 
               size={24} 
               color={color} 
             />
