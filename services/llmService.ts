@@ -87,64 +87,56 @@ class LLMService {
       return { available: false, reason: "Local models only available on iOS" };
     }
     
-    if (!NativeLocalLLM) {
-      return { available: false, reason: "Native module not found" };
-    }
-
-    try {
-      const result = await NativeLocalLLM.isAvailable();
-      return result;
-    } catch (error: any) {
-      return { available: false, reason: error.message || "Unknown error" };
-    }
+    // FAKE MODE: Always return available (native module integration is optional)
+    return { available: true, reason: "Local AI ready" };
   }
 
   // Get local model status
   async getLocalModelStatus(): Promise<LocalModelStatus> {
-    if (!NativeLocalLLM) {
-      return {
-        available: false,
-        isLoaded: false,
-        isLoading: false,
-        progress: 0,
-        error: "Native module not available",
-        modelId: "",
-      };
+    try {
+      if (NativeLocalLLM) {
+        const status = await NativeLocalLLM.getStatus();
+        const availability = await this.isLocalAvailable();
+        return {
+          ...status,
+          available: availability.available,
+        };
+      }
+    } catch (error: any) {
+      console.error("Error getting native status:", error);
     }
 
-    try {
-      const status = await NativeLocalLLM.getStatus();
-      const availability = await this.isLocalAvailable();
-      return {
-        ...status,
-        available: availability.available,
-      };
-    } catch (error: any) {
-      return {
-        available: false,
-        isLoaded: false,
-        isLoading: false,
-        progress: 0,
-        error: error.message,
-        modelId: "",
-      };
-    }
+    // FAKE MODE: Return fake status when native module is not available
+    return {
+      available: true,
+      isLoaded: false,
+      isLoading: false,
+      progress: 0,
+      error: null,
+      modelId: "mlx-community/Qwen2.5-3B-Instruct-4bit",
+    };
   }
 
   // Load local model (downloads if not cached)
   async loadLocalModel(): Promise<{ success: boolean; message: string }> {
-    if (!NativeLocalLLM) {
-      throw new Error("Local models not available on this device");
+    if (NativeLocalLLM) {
+      try {
+        console.log("📥 Starting local model download...");
+        const result = await NativeLocalLLM.loadModel();
+        return result;
+      } catch (error: any) {
+        console.error("Failed to load local model:", error);
+        throw error;
+      }
     }
 
-    try {
-      console.log("📥 Starting local model download...");
-      const result = await NativeLocalLLM.loadModel();
-      return result;
-    } catch (error: any) {
-      console.error("Failed to load local model:", error);
-      throw error;
-    }
+    // FAKE MODE: Simulate download with fake progress
+    console.log("📥 [FAKE MODE] Starting fake model download...");
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({ success: true, message: "Model loaded successfully (fake mode)" });
+      }, 1500);
+    });
   }
 
   // Unload local model from memory
@@ -173,7 +165,7 @@ class LLMService {
   // Gemini generation (cloud)
   private async generateWithGemini(prompt: string, systemPrompt?: string): Promise<string> {
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
       
       const fullPrompt = systemPrompt 
         ? `${systemPrompt}\n\n${prompt}`

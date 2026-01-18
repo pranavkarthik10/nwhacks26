@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#007AFF",
   },
   messageContainer: {
-    maxWidth: "75%",
+    maxWidth: "85%",
   },
   userMessage: {
     alignItems: "flex-end",
@@ -813,6 +813,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 16,
     overflow: "hidden",
+    maxWidth: "100%",
+    alignSelf: "stretch",
   },
   typingBubble: {
     paddingVertical: 16,

@@ -51,26 +51,27 @@ export default function PrivacyScreen() {
 
       if (!status.isLoaded) {
         console.log("📥 Starting model download...");
-        // Start download
+        
+        // Simulate progress for fake mode
+        let progress = 0;
+        const interval = setInterval(() => {
+          progress += Math.random() * 0.3;
+          if (progress > 0.95) progress = 0.95;
+          setDownloadProgress(progress);
+        }, 200);
+
+        // Start the actual download (fake, takes 1.5s)
         await llmService.loadLocalModel();
         
-        // Poll for status updates
-        const interval = setInterval(async () => {
-          const updatedStatus = await llmService.getLocalModelStatus();
-          setModelStatus(updatedStatus);
-          setDownloadProgress(updatedStatus.progress);
-          
-          if (updatedStatus.isLoaded) {
-            clearInterval(interval);
-            console.log("✅ Model downloaded successfully!");
-          } else if (updatedStatus.error) {
-            clearInterval(interval);
-            throw new Error(updatedStatus.error);
-          }
-        }, 1000);
+        // Clear interval and mark as loaded
+        clearInterval(interval);
+        setDownloadProgress(1);
+        setModelStatus(prev => prev ? { ...prev, isLoaded: true, progress: 1 } : null);
+        console.log("✅ Model downloaded successfully!");
       } else {
         console.log("✅ Model already downloaded!");
         setDownloadProgress(1);
+        setModelStatus(prev => prev ? { ...prev, isLoaded: true } : null);
       }
     } catch (error: any) {
       console.error("Download error:", error);

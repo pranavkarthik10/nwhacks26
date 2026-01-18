@@ -1,9 +1,6 @@
 import React from "react";
-import { View, Text, StyleSheet, Dimensions, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { LineChart, BarChart } from "react-native-chart-kit";
-
-const screenWidth = Dimensions.get("window").width;
-const chartWidth = screenWidth - 40;
 
 interface HealthChartProps {
   type: "line" | "bar";
@@ -78,42 +75,46 @@ export const HealthChart: React.FC<HealthChartProps> = ({
   };
 
   try {
+    // Calculate chart width based on container - account for container padding (16px each side)
+    const chartWidth = 280; // Fixed width that fits well in message bubble
+    
     return (
       <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.chartWrapper}
-          scrollEnabled={chartWidth < screenWidth - 20}
-        >
-          {type === "line" ? (
-            <LineChart
-              data={cleanedData}
-              width={Math.max(chartWidth, 300)}
-              height={220}
-              chartConfig={chartConfig}
-              bezier
-              style={styles.chart}
-              withInnerLines={true}
-              withOuterLines={true}
-              withVerticalLines={false}
-              withHorizontalLines={true}
-            />
-          ) : (
-            <BarChart
-              data={cleanedData}
-              width={Math.max(chartWidth, 300)}
-              height={220}
-              chartConfig={chartConfig}
-              style={styles.chart}
-              yAxisLabel=""
-              yAxisSuffix=""
-              showValuesOnTopOfBars={true}
-              fromZero={true}
-            />
-          )}
-        </ScrollView>
+        <View style={styles.chartWrapper}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {type === "line" ? (
+              <LineChart
+                data={cleanedData}
+                width={chartWidth}
+                height={200}
+                chartConfig={chartConfig}
+                bezier
+                style={styles.chart}
+                withInnerLines={true}
+                withOuterLines={true}
+                withVerticalLines={false}
+                withHorizontalLines={true}
+              />
+            ) : (
+              <BarChart
+                data={cleanedData}
+                width={chartWidth}
+                height={200}
+                chartConfig={chartConfig}
+                style={styles.chart}
+                yAxisLabel=""
+                yAxisSuffix=""
+                showValuesOnTopOfBars={true}
+                fromZero={true}
+              />
+            )}
+          </ScrollView>
+        </View>
       </View>
     );
   } catch (error) {
@@ -133,21 +134,23 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginVertical: 8,
-    overflow: "hidden",
+    alignSelf: "stretch",
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
-    marginBottom: 12,
+    marginBottom: 8,
     color: "#000",
   },
   chartWrapper: {
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
+    overflow: "hidden",
+    borderRadius: 8,
+  },
+  scrollContent: {
+    paddingVertical: 4,
   },
   chart: {
-    marginVertical: 8,
-    borderRadius: 16,
+    borderRadius: 8,
   },
   noData: {
     fontSize: 14,
