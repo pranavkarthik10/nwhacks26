@@ -12,9 +12,15 @@ import {
   Animated,
   Dimensions,
 } from "react-native";
+import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// Mascot assets
+const MASCOT_IDLE = require("../assets/gifs/Lora Mascot.png");
+const MASCOT_THINKING = require("../assets/gifs/lora mascot thinking.gif");
+const MASCOT_TALKING = require("../assets/gifs/lora mascot talking.gif");
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -57,7 +63,6 @@ export function VoiceChatOverlay({
   
   // Animation values
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const waveformAnims = useRef(
     Array.from({ length: 5 }, () => new Animated.Value(0.3))
@@ -96,24 +101,6 @@ export function VoiceChatOverlay({
     }
   }, [voiceState, pulseAnim]);
 
-  // Rotate animation for processing state
-  useEffect(() => {
-    if (voiceState === "processing") {
-      const spin = Animated.loop(
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        })
-      );
-      spin.start();
-      return () => {
-        spin.stop();
-        rotateAnim.setValue(0);
-      };
-    }
-  }, [voiceState, rotateAnim]);
-
   // Waveform animation based on audio level
   useEffect(() => {
     if (voiceState === "listening" || voiceState === "speaking") {
@@ -146,11 +133,6 @@ export function VoiceChatOverlay({
   const color = STATE_COLORS[voiceState];
   const label = STATE_LABELS[voiceState];
 
-  const rotateInterpolate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
-
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <BlurView intensity={95} tint="dark" style={StyleSheet.absoluteFill} />
@@ -166,7 +148,7 @@ export function VoiceChatOverlay({
 
       {/* Center Content */}
       <View style={styles.centerContent}>
-        {/* Avatar Circle - Tappable when listening to stop and send */}
+        {/* Mascot - Tappable when listening to stop and send */}
         <TouchableOpacity
           activeOpacity={voiceState === "listening" ? 0.7 : 1}
           onPress={voiceState === "listening" ? onMicPress : undefined}
@@ -174,32 +156,24 @@ export function VoiceChatOverlay({
         >
           <Animated.View
             style={[
-              styles.avatarContainer,
+              styles.mascotContainer,
               {
-                transform: [
-                  { scale: pulseAnim },
-                  { rotate: voiceState === "processing" ? rotateInterpolate : "0deg" },
-                ],
+                transform: [{ scale: pulseAnim }],
               },
             ]}
           >
-            <View style={[styles.avatarOuter, { borderColor: color }]}>
-              <View style={[styles.avatarInner, { backgroundColor: color }]}>
-                <Ionicons
-                  name={
-                    voiceState === "listening"
-                      ? "mic"
-                      : voiceState === "processing"
-                      ? "sparkles"
-                      : voiceState === "speaking"
-                      ? "volume-high"
-                      : "mic-outline"
-                  }
-                  size={40}
-                  color="#fff"
-                />
-              </View>
-            </View>
+            <Image
+              source={
+                voiceState === "speaking"
+                  ? MASCOT_TALKING
+                  : voiceState === "processing"
+                  ? MASCOT_THINKING
+                  : MASCOT_IDLE
+              }
+              style={styles.mascotImage}
+              contentFit="contain"
+              autoplay={true}
+            />
           </Animated.View>
         </TouchableOpacity>
 
@@ -264,24 +238,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  avatarContainer: {
+  mascotContainer: {
     marginBottom: 40,
-  },
-  avatarOuter: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 4,
-    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  avatarInner: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
     justifyContent: "center",
-    alignItems: "center",
+  },
+  mascotImage: {
+    width: 200,
+    height: 200,
   },
   waveformContainer: {
     flexDirection: "row",

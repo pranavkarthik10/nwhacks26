@@ -1,4 +1,5 @@
 import useHealthData from "@/hooks/useHealthData";
+import { WeeklyTrends } from "@/components/WeeklyTrends";
 import React, { useEffect } from "react";
 import {
   View,
@@ -290,6 +291,9 @@ export default function Index() {
           <Text style={styles.cardUnit}>hours last night</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Weekly Trends */}
+      <WeeklyTrends steps={steps} sleep={getTotalSleep(sleep)} heartRate={heartRate} />
 
       <View style={styles.bottomPadding} />
     </ScrollView>
