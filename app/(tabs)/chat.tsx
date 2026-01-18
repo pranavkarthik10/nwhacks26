@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,9 @@ import {
   Modal,
   Dimensions,
   Keyboard,
+  AppState,
+  AppStateStatus,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -20,10 +23,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { HealthChart } from "@/components/HealthChart";
 import { ModelSettings } from "@/components/ModelSettings";
+import { VoiceChatOverlay, VoiceState } from "@/components/VoiceChatOverlay";
 import { processHealthQuery } from "@/utils/aiHealthTools";
 import { voiceService } from "@/services/voiceService";
+import { speechService, normalizeDb } from "@/services/speechService";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Helper function for delays
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface Message {
   id: string;
@@ -70,10 +78,16 @@ export default function ChatScreen() {
   const [currentChatId, setCurrentChatId] = useState<string>("");
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [showModelSettings, setShowModelSettings] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Voice mode state
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [currentVoiceMessage, setCurrentVoiceMessage] = useState("");
+  const voiceModeRef = useRef(false); // Ref for loop control (avoids stale closure)
 
   // Track keyboard visibility
   useEffect(() => {
@@ -85,7 +99,33 @@ export default function ChatScreen() {
     };
   }, []);
 
-  // Load chat sessions and voice settings on mount
+  // Handle app state changes (exit voice mode when backgrounded)
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState !== "active" && voiceMode) {
+        console.log("📱 App backgrounded, exiting voice mode");
+        voiceModeRef.current = false;
+        setVoiceMode(false);
+        setVoiceState("idle");
+        speechService.cleanup();
+      }
+    };
+
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+    return () => subscription.remove();
+  }, [voiceMode]);
+
+  // Cleanup voice service on unmount
+  useEffect(() => {
+    return () => {
+      if (voiceModeRef.current) {
+        voiceModeRef.current = false;
+        speechService.cleanup();
+      }
+    };
+  }, []);
+
+  // Load chat sessions on mount
   useEffect(() => {
     loadChatSessions();
     loadVoiceSettings();
@@ -274,10 +314,163 @@ export default function ChatScreen() {
     }
   };
 
-  const handleVoicePress = () => {
-    setIsRecording(!isRecording);
-    // TODO: Implement voice input with Eleven Labs
-    Alert.alert("Voice Input", "Voice input coming soon with Eleven Labs integration!");
+  // Voice conversation loop
+  const runVoiceLoop = useCallback(async () => {
+    console.log("🎙️ Voice loop started");
+    
+    while (voiceModeRef.current) {
+      try {
+        // 1. Start listening
+        setVoiceState("listening");
+        setAudioLevel(0);
+        
+        const audioUri = await speechService.startRecordingWithAutoStop((dB) => {
+          setAudioLevel(normalizeDb(dB));
+        });
+        
+        // Check if we should exit
+        if (!voiceModeRef.current) {
+          console.log("🛑 Voice mode exited during recording");
+          break;
+        }
+        
+        if (!audioUri) {
+          console.log("⚠️ No audio recorded, continuing...");
+          await delay(500);
+          continue;
+        }
+        
+        // 2. Transcribe
+        setVoiceState("processing");
+        let userText: string;
+        
+        try {
+          userText = await speechService.transcribeAudio(audioUri);
+        } catch (error) {
+          console.error("Transcription error:", error);
+          // Retry once
+          try {
+            await delay(500);
+            userText = await speechService.transcribeAudio(audioUri);
+          } catch (retryError) {
+            console.error("Transcription retry failed:", retryError);
+            await delay(1000);
+            continue;
+          }
+        }
+        
+        // Skip empty transcriptions
+        if (!userText.trim()) {
+          console.log("⚠️ Empty transcription, continuing...");
+          await delay(500);
+          continue;
+        }
+        
+        // 3. Add user message to chat
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          role: "user",
+          content: userText.trim(),
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, userMessage]);
+        
+        // 4. Get AI response
+        const response = await processHealthQuery(userText);
+        
+        // 5. Add AI message to chat
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: response.text,
+          chartData: response.chartData,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        setCurrentVoiceMessage(response.text);
+        
+        // Check if we should exit before speaking
+        if (!voiceModeRef.current) {
+          console.log("🛑 Voice mode exited before speaking");
+          break;
+        }
+        
+        // 6. Speak the response
+        setVoiceState("speaking");
+        
+        try {
+          const speechUri = await speechService.synthesizeSpeech(response.text);
+          await speechService.playAudio(speechUri);
+        } catch (error) {
+          console.error("Speech synthesis/playback error:", error);
+          // Continue loop even if speech fails
+        }
+        
+        // 7. Brief pause before next loop iteration
+        await delay(500);
+        
+      } catch (error) {
+        console.error("Voice loop error:", error);
+        // Don't crash the loop - continue after a delay
+        await delay(1000);
+      }
+    }
+    
+    // Cleanup on exit
+    console.log("🎙️ Voice loop ended");
+    setVoiceState("idle");
+    setAudioLevel(0);
+    setCurrentVoiceMessage("");
+    await speechService.cleanup();
+  }, []);
+
+  const handleVoicePress = async () => {
+    if (!voiceMode) {
+      // Enter voice mode
+      console.log("🎙️ Entering voice mode");
+      
+      const hasPermission = await speechService.requestPermissions();
+      if (!hasPermission) {
+        Alert.alert(
+          "Permission Required",
+          "Microphone access is needed for voice chat. Please enable it in Settings.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Settings", onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
+      
+      voiceModeRef.current = true;
+      setVoiceMode(true);
+      setVoiceState("listening");
+      runVoiceLoop();
+    } else {
+      // Exit voice mode
+      console.log("🎙️ Exiting voice mode");
+      voiceModeRef.current = false;
+      setVoiceMode(false);
+      setVoiceState("idle");
+      await speechService.cleanup();
+    }
+  };
+
+  const exitVoiceMode = async () => {
+    console.log("🎙️ Exit button pressed");
+    voiceModeRef.current = false;
+    setVoiceMode(false);
+    setVoiceState("idle");
+    await speechService.cleanup();
+  };
+
+  // Called when user taps the center mic in the overlay (to stop recording and send)
+  const handleOverlayMicPress = async () => {
+    if (voiceState === "listening") {
+      console.log("🎙️ Overlay mic pressed - stopping recording to send");
+      await speechService.forceStopRecording();
+      // The voice loop will continue with transcription after forceStopRecording resolves
+    }
   };
 
   const renderMessage = (message: Message, index: number) => {
@@ -338,6 +531,15 @@ export default function ChatScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Voice Chat Overlay */}
+      <VoiceChatOverlay
+        visible={voiceMode}
+        voiceState={voiceState}
+        audioLevel={audioLevel}
+        currentMessage={currentVoiceMessage}
+        onExit={exitVoiceMode}
+        onMicPress={handleOverlayMicPress}
+      />
 
       {/* Minimal Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -536,12 +738,12 @@ export default function ChatScreen() {
             <View style={styles.inputActions}>
               <TouchableOpacity
                 onPress={handleVoicePress}
-                style={[styles.voiceButton, isRecording && styles.voiceButtonActive]}
+                style={[styles.voiceButton, voiceMode && styles.voiceButtonActive]}
               >
                 <Ionicons 
-                  name={isRecording ? "mic" : "mic-outline"} 
+                  name={voiceMode ? "mic" : "mic-outline"} 
                   size={22} 
-                  color={isRecording ? "#fff" : "#007AFF"} 
+                  color={voiceMode ? "#fff" : "#007AFF"} 
                 />
               </TouchableOpacity>
 

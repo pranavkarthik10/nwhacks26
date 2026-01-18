@@ -173,7 +173,7 @@ class LLMService {
   // Gemini generation (cloud)
   private async generateWithGemini(prompt: string, systemPrompt?: string): Promise<string> {
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
       
       const fullPrompt = systemPrompt 
         ? `${systemPrompt}\n\n${prompt}`
