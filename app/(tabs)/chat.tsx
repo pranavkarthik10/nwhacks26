@@ -64,7 +64,7 @@ const SUGGESTIONS = [
 const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
-  content: "Hey! 👋 I'm your AI health companion. Ask me anything about your health data — steps, sleep, heart rate, and more.",
+  content: "Hey! 👋 I'm Lora, your AI health companion. Ask me anything about your health data — steps, sleep, heart rate, and more.",
   timestamp: new Date(),
 };
 
@@ -279,7 +279,16 @@ export default function ChatScreen() {
     setIsLoading(true);
 
     try {
-      const response = await processHealthQuery(messageText);
+      // Build conversation history (exclude welcome message)
+      // Include all previous messages in history (the current userMessage will be the latest query)
+      const conversationHistory = [
+        ...messages.filter(m => m.id !== "welcome"),
+        userMessage
+      ].map(m => ({ role: m.role, content: m.content }));
+
+      console.log(`📨 Sending with ${conversationHistory.length} messages in history`);
+
+      const response = await processHealthQuery(messageText, conversationHistory);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -375,8 +384,16 @@ export default function ChatScreen() {
         };
         setMessages((prev) => [...prev, userMessage]);
         
-        // 4. Get AI response
-        const response = await processHealthQuery(userText);
+        // 4. Get AI response with conversation history
+        // Build the history including the current user message
+        const conversationHistory = [
+          ...messages.filter(m => m.id !== "welcome"),
+          userMessage
+        ].map(m => ({ role: m.role, content: m.content }));
+        
+        console.log(`🎤 Voice query with ${conversationHistory.length} messages in history`);
+        
+        const response = await processHealthQuery(userText, conversationHistory);
         
         // 5. Add AI message to chat
         const aiMessage: Message = {
@@ -560,7 +577,7 @@ export default function ChatScreen() {
           style={styles.headerCenter}
           activeOpacity={0.7}
         >
-          <Text style={styles.headerTitle}>Health AI</Text>
+          <Text style={styles.headerTitle}>Lora</Text>
           <View style={styles.statusDot} />
           {isVoiceEnabled && (
             <Ionicons name="volume-high" size={14} color="#007AFF" />

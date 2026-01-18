@@ -7,6 +7,11 @@ interface HealthQueryResponse {
   chartData?: any;
 }
 
+interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 // Define available health tools
 const healthTools = [
   {
@@ -76,15 +81,32 @@ const healthTools = [
 ];
 
 // Process query and determine which tools to use
-export async function processHealthQuery(query: string): Promise<HealthQueryResponse> {
+export async function processHealthQuery(
+  query: string, 
+  conversationHistory: ConversationMessage[] = []
+): Promise<HealthQueryResponse> {
   try {
     // Initialize LLM service
     await llmService.initialize();
 
+    console.log(`🔍 Processing query with ${conversationHistory.length} previous messages`);
+    if (conversationHistory.length > 0) {
+      console.log("Recent context:", conversationHistory.slice(-2));
+    }
+
+    // Build conversation context for tool selection
+    let contextSummary = "";
+    if (conversationHistory.length > 0) {
+      // Include last few messages for context (limit to avoid token issues)
+      const recentMessages = conversationHistory.slice(-4);
+      contextSummary = "\n\nRecent conversation:\n" + 
+        recentMessages.map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n");
+    }
+
     // First, analyze the query to determine which health data to fetch
     const analysisPrompt = `You are a health data assistant. Analyze this user query and determine which health metrics they want to see:
     
-Query: "${query}"
+Query: "${query}"${contextSummary}
 
 Available tools:
 ${healthTools.map((t, i) => `${i + 1}. ${t.name}: ${t.description}`).join("\n")}
@@ -123,15 +145,33 @@ Respond in JSON format ONLY (no markdown, no explanation):
       }
     }
 
-    // Generate response with health data context
-    const responsePrompt = `You are a friendly health assistant. The user asked: "${query}"
+    // Generate response with health data context and conversation history
+    // Build messages array for chat-style generation
+    const hasData = Object.keys(toolResults).length > 0;
+    const dataContext = hasData 
+      ? `\n\nYou have access to this health data:\n${JSON.stringify(toolResults, null, 2)}\n\nUse this data to answer the user's question.`
+      : "";
 
-Health data retrieved:
-${JSON.stringify(toolResults, null, 2)}
+    const chatMessages: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
+      {
+        role: "system",
+        content: `You are Lora, a friendly health assistant. Provide conversational responses about health data. Be specific with numbers and provide insights. Keep responses concise (2-3 sentences). Remember the conversation context and refer back to previous messages when relevant.${dataContext}`
+      }
+    ];
 
-Provide a friendly, conversational response about their health data. Be specific with numbers and provide insights. Keep it concise (2-3 sentences).`;
+    // Add conversation history (limit to recent messages to manage token count)
+    // The conversation history already includes the current query as the last message
+    const recentHistory = conversationHistory.slice(-6);
+    recentHistory.forEach(msg => {
+      chatMessages.push({
+        role: msg.role,
+        content: msg.content
+      });
+    });
 
-    const responseText = await generateText(responsePrompt);
+    console.log(`💬 Sending ${chatMessages.length} messages to LLM (1 system + ${recentHistory.length} chat)`);
+
+    const responseText = await llmService.chat(chatMessages);
 
     // Prepare chart data if needed
     let chartData = null;

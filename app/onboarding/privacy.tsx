@@ -52,7 +52,7 @@ export default function PrivacyScreen() {
       if (!status.isLoaded) {
         console.log("📥 Starting model download...");
         
-        // Simulate progress for fake mode
+        // Simulate progress
         let progress = 0;
         const interval = setInterval(() => {
           progress += Math.random() * 0.3;

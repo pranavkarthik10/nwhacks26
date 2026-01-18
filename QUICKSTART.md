@@ -1,6 +1,6 @@
 # 🚀 Quick Start Guide
 
-Get your Health AI Chat app running in 5 minutes!
+Get Lora, your Health AI Companion, running in 5 minutes!
 
 ## Step 1: Get Your Gemini API Key
 
@@ -40,9 +40,9 @@ npm run ios
 2. Grant HealthKit permissions when prompted
 3. Your health data will load automatically
 
-## Step 6: Try the AI Chat
+## Step 6: Chat with Lora
 
-1. Switch to the "AI Chat" tab
+1. Switch to the "Lora" chat tab
 2. Try these example questions:
    - "How many steps today?"
    - "Show my heart rate"

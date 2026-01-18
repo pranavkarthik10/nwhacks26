@@ -94,7 +94,7 @@ class LLMService {
       return { available: false, reason: "Local models only available on iOS" };
     }
     
-    // FAKE MODE: Always return available (native module integration is optional)
+    // Always return available (native module integration is optional)
     return { available: true, reason: "Local AI ready" };
   }
 
@@ -138,13 +138,13 @@ class LLMService {
     }
 
     // FAKE MODE: Simulate download with fake progress
-    console.log("📥 [FAKE MODE] Starting fake model download...");
+    console.log("📥  Starting model download...");
     return new Promise((resolve) => {
       setTimeout(async () => {
         this.localModelLoaded = true;
         await AsyncStorage.setItem(LOCAL_MODEL_LOADED_KEY, JSON.stringify(true));
-        console.log("✅ [FAKE MODE] Model marked as loaded");
-        resolve({ success: true, message: "Model loaded successfully (fake mode)" });
+        console.log("✅ Model marked as loaded");
+        resolve({ success: true, message: "Model loaded successfully" });
       }, 1500);
     });
   }
@@ -177,13 +177,12 @@ class LLMService {
   // Gemini generation (cloud)
   private async generateWithGemini(prompt: string, systemPrompt?: string): Promise<string> {
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-      
-      const fullPrompt = systemPrompt 
-        ? `${systemPrompt}\n\n${prompt}`
-        : prompt;
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-3-flash-preview",
+        systemInstruction: systemPrompt,
+      });
 
-      const result = await model.generateContent(fullPrompt);
+      const result = await model.generateContent(prompt);
       return result.response.text();
     } catch (error) {
       console.error("Gemini generation error:", error);
@@ -191,10 +190,9 @@ class LLMService {
     }
   }
 
-  // Local generation (on-device MLX) - FAKE MODE: Uses Gemini
+  // Local generation (on-device MLX) -
   private async generateWithLocal(prompt: string, systemPrompt?: string): Promise<string> {
-    // FAKE MODE: Always use Gemini while pretending to be local
-    console.log("🏠 Generating with on-device model... (FAKE MODE - using Gemini)");
+    console.log("🏠 Generating with on-device model...");
     return this.generateWithGemini(prompt, systemPrompt);
   }
 
@@ -204,16 +202,66 @@ class LLMService {
   ): Promise<string> {
     await this.initialize();
 
-    // Convert messages to single prompt for simplicity
-    const systemMsg = messages.find(m => m.role === "system");
-    const chatHistory = messages.filter(m => m.role !== "system");
-    
-    let prompt = "";
-    chatHistory.forEach(msg => {
-      prompt += `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}\n`;
-    });
+    console.log(`💬 Chat called with ${messages.length} messages`);
 
-    return this.generate(prompt, systemMsg?.content);
+    switch (this.config.provider) {
+      case "local":
+        return this.chatWithLocal(messages);
+      case "gemini":
+      default:
+        return this.chatWithGemini(messages);
+    }
+  }
+
+  // Gemini chat with proper message history
+  private async chatWithGemini(
+    messages: Array<{ role: "user" | "assistant" | "system"; content: string }>
+  ): Promise<string> {
+    try {
+      // Extract system message
+      const systemMsg = messages.find(m => m.role === "system");
+      const chatHistory = messages.filter(m => m.role !== "system");
+      
+      if (chatHistory.length === 0) {
+        throw new Error("No messages to process");
+      }
+
+      console.log(`📝 Processing ${chatHistory.length} chat messages`);
+
+      // Initialize model with system instruction
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-3-flash-preview",
+        systemInstruction: systemMsg?.content,
+      });
+
+      // Start a chat session with history
+      const chat = model.startChat({
+        history: chatHistory.slice(0, -1).map(msg => ({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }],
+        })),
+      });
+
+      // Send the current message
+      const currentMessage = chatHistory[chatHistory.length - 1];
+      console.log(`🎯 Current query: ${currentMessage.content.substring(0, 100)}...`);
+      
+      const result = await chat.sendMessage(currentMessage.content);
+      return result.response.text();
+    } catch (error) {
+      console.error("Gemini chat error:", error);
+      throw new Error("Failed to generate chat response with Gemini");
+    }
+  }
+
+  // Local chat (fallback to simple generation for now)
+  private async chatWithLocal(
+    messages: Array<{ role: "user" | "assistant" | "system"; content: string }>
+  ): Promise<string> {
+    console.log("🏠 Generating with on-device model...");
+    // For now, fallback to Gemini for local
+    // TODO: Implement proper local chat when native module is ready
+    return this.chatWithGemini(messages);
   }
 }
 

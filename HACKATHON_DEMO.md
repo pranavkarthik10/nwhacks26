@@ -23,7 +23,7 @@
 ### 0:00-0:15 | INTRO & PROBLEM (15 seconds)
 
 **What to Say:**
-> "Most health apps are just dashboards - you see numbers but don't understand what they mean. We built an AI health companion that *talks to you* about your health."
+> "Most health apps are just dashboards - you see numbers but don't understand what they mean. We built Lora, an AI health companion that *talks to you* about your health."
 
 **Show:**
 - App on home screen
@@ -55,13 +55,13 @@
 **Action:** Go to Chat Tab, ask a question out loud
 
 **What to Say:**
-> "I'll ask a natural question and the AI understands what health data I need"
+> "I'll ask a natural question and Lora understands what health data I need"
 
 **Demo Steps:**
 1. Type or say: "How many steps did I take today?"
-2. Show AI response appears instantly
-3. Tap "Health AI" header to show settings are available
-4. Say: "The AI automatically fetches the right health data and gives me the answer"
+2. Show Lora's response appears instantly
+3. Tap "Lora" header to show settings are available
+4. Say: "Lora automatically fetches the right health data and gives me the answer"
 
 **Show:**
 - Natural conversation flow
@@ -79,16 +79,16 @@
 **Action:** Before demo, verify voice is ON in settings
 
 **What to Say:**
-> "Here's where it gets special - our AI doesn't just text responses, it *talks to you* with a natural voice"
+> "Here's where it gets special - Lora doesn't just text responses, she *talks to you* with a natural voice"
 
 **Demo Steps:**
 
 1. **Show Voice Settings:**
-   - Tap "Health AI" header
+   - Tap "Lora" header
    - Scroll to "Voice Assistant"
    - Show toggle is ON
    - Show 5 voice options
-   - Say: "We have 5 natural voices to choose from"
+   - Say: "Lora has 5 natural voices to choose from"
 
 2. **Play Voice Preview:**
    - Tap play button on a voice (e.g., Rachel)
@@ -99,9 +99,9 @@
    - Close settings
    - Ask: "What should I focus on this week?"
    - 🎙️ WAIT FOR VOICE RESPONSE
-   - Say: "The AI spoke the response automatically - that's our voice feature in action!"
+   - Say: "Lora spoke the response automatically - that's the voice feature in action!"
 
-**Key Point:** "Making AI feel like a real health companion, not just a chatbot"
+**Key Point:** "Making Lora feel like a real health companion, not just a chatbot"
 
 ---
 
@@ -115,7 +115,7 @@
 - "Show me my heart rate trends"
 
 **What to Say:**
-> "The AI isn't just answering - it's analyzing your health data and giving you insights"
+> "Lora isn't just answering - she's analyzing your health data and giving you personalized insights"
 
 **Show:**
 - AI response with analysis
@@ -128,10 +128,10 @@
 
 ### 3:45-4:30 | LOCAL MODEL & PRIVACY (45 seconds)
 
-**Action:** Tap "Health AI" header → Show "On-Device (Private)" option
+**Action:** Tap "Lora" header → Show "On-Device (Private)" option
 
 **What to Say:**
-> "We support both cloud AI and on-device processing. Your health data can stay completely private on your device."
+> "Lora supports both cloud AI and on-device processing. Your health data can stay completely private on your device."
 
 **Show:**
 - Two AI provider options (Gemini Cloud vs Local)
@@ -145,7 +145,7 @@
 ### 4:30-5:00 | CLOSING & IMPACT (30 seconds)
 
 **What to Say:**
-> "We've built a health companion that:
+> "We've built Lora, a health companion that:
 > - Understands you naturally
 > - Speaks to you with a natural voice
 > - Keeps your data private
@@ -263,7 +263,7 @@
 **A:** "Most people check health apps on the go. Voice is hands-free and feels like talking to a real doctor."
 
 ### Q: "How is this different from ChatGPT?"
-**A:** "ChatGPT doesn't understand health data. We integrated your actual health metrics so it gives personalized answers."
+**A:** "ChatGPT doesn't understand health data. Lora integrates with your actual health metrics from Apple Health, so she gives personalized answers based on your real data."
 
 ### Q: "What about privacy with ElevenLabs?"
 **A:** "Only AI-generated text is sent. Raw health data never leaves the device. Plus users can use fully local mode."

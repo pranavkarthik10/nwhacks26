@@ -1,8 +1,8 @@
-# 🎯 Project Summary: Health AI Chat App
+# 🎯 Project Summary: Lora - AI Health Companion
 
 ## What Was Built
 
-A fully functional iOS health app with AI-powered conversational interface that integrates Apple HealthKit with Google Gemini AI.
+Lora is a fully functional iOS health companion app with AI-powered conversational interface that integrates Apple HealthKit with Google Gemini AI.
 
 ## 📁 New Files Created
 
@@ -62,7 +62,7 @@ A fully functional iOS health app with AI-powered conversational interface that 
 - ✅ AI Chat tab (new conversational interface)
 - ✅ Icon-based navigation with Ionicons
 
-### 2. AI Chat Interface
+### 2. Lora Chat Interface
 - ✅ Message bubbles (user vs assistant styling)
 - ✅ Real-time message streaming
 - ✅ Loading indicators
@@ -158,15 +158,15 @@ A fully functional iOS health app with AI-powered conversational interface that 
 | Sleep | ✅ | ✅ | Bar Chart |
 | Distance | ✅ | ❌ | ❌ |
 
-## 🤖 AI Capabilities
+## 🤖 Lora's AI Capabilities
 
-The AI assistant can:
+Lora can:
 - ✅ Understand natural language queries
 - ✅ Automatically select appropriate health data tools
 - ✅ Fetch multiple metrics simultaneously
 - ✅ Generate conversational responses
 - ✅ Create visualizations when relevant
-- ✅ Provide health insights
+- ✅ Provide personalized health insights
 - ✅ Handle errors gracefully
 
 ## 🧪 Example Queries

@@ -2,7 +2,7 @@
 
 ## Summary of What's Ready
 
-Your Health AI Chat App now has **all high-ROI hackathon features implemented and working**.
+Lora, your Health AI Companion, now has **all high-ROI hackathon features implemented and working**.
 
 ---
 

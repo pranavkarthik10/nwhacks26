@@ -1,6 +1,6 @@
-# 🏥 Health AI Chat App
+# 🏥 Lora - Your AI Health Companion
 
-An intelligent health companion app that integrates Apple HealthKit data with Google Gemini AI to provide personalized health insights through natural language conversations.
+An intelligent health companion app that integrates Apple HealthKit data with Google Gemini AI to provide personalized health insights through natural language conversations. Meet Lora, your personal AI health assistant.
 
 <img src="https://img.shields.io/badge/React%20Native-0.81.4-61DAFB?logo=react" alt="React Native" />
 <img src="https://img.shields.io/badge/Expo-54-000020?logo=expo" alt="Expo" />
@@ -15,11 +15,11 @@ An intelligent health companion app that integrates Apple HealthKit data with Go
 - **Beautiful UI**: Color-coded health cards with intuitive icons
 - **Quick Refresh**: Update your data anytime with a single tap
 
-### 💬 AI Chat Assistant
-- **Natural Language Queries**: Ask questions about your health in plain English
+### 💬 Lora - AI Chat Assistant
+- **Natural Language Queries**: Ask Lora questions about your health in plain English
 - **Intelligent Responses**: Powered by Google Gemini 2.0 Flash
 - **Dynamic Charts**: Visual representations of your health trends
-- **Tool Calling**: AI automatically fetches the right health data to answer your questions
+- **Tool Calling**: Lora automatically fetches the right health data to answer your questions
 
 #### Example Queries:
 - "How many steps did I take today?"
@@ -29,10 +29,10 @@ An intelligent health companion app that integrates Apple HealthKit data with Go
 - "Compare my activity this week to last week"
 
 ### 🎙️ Voice AI Responses
-- **Natural Voice Output**: Hear responses from AI in natural human voices
+- **Natural Voice Output**: Hear responses from Lora in natural human voices
 - **5 Voice Options**: Choose from Rachel, Bella, Antoni, Arnold, or Domi
 - **Voice Preview**: Test voices before selecting your preference
-- **Automatic Playback**: AI responses spoken automatically
+- **Automatic Playback**: Lora's responses spoken automatically
 
 ### 💾 Chat Persistence
 - **Auto-Save**: Every conversation automatically saved to device
@@ -113,16 +113,16 @@ For future voice features:
 3. Data is displayed in real-time on the dashboard
 4. Data is cached and can be refreshed on demand
 
-### AI Chat Flow
-1. User types a natural language query
+### Lora's AI Chat Flow
+1. User asks Lora a natural language question
 2. Query is sent to Google Gemini AI
-3. AI analyzes the query and determines which health data to fetch
+3. Lora analyzes the query and determines which health data to fetch
 4. App executes the appropriate health data functions
-5. AI generates a conversational response with insights
+5. Lora generates a conversational response with insights
 6. If applicable, a chart is rendered with the data
 
 ### Available Health Tools
-The AI can call these functions to fetch your data:
+Lora can call these functions to fetch your data:
 - `getStepsToday()` - Today's step count
 - `getStepsLastWeek()` - Daily steps for 7 days
 - `getCaloriesToday()` - Calories burned today
@@ -144,7 +144,7 @@ View your daily health metrics with:
 - Refresh button
 - Revoke access option
 
-### AI Chat Tab
+### Lora Chat Tab
 Interactive chat interface featuring:
 - Conversational message bubbles
 - Loading indicators
@@ -183,7 +183,7 @@ This app requires the following HealthKit permissions:
 - ✅ Try the refresh button
 - ✅ Restart the app
 
-### AI Chat not responding
+### Lora not responding
 - ✅ Check your `.env` file has the correct Gemini API key
 - ✅ Verify internet connection
 - ✅ Check the console for error messages
@@ -223,3 +223,5 @@ For issues or questions, please open an issue on GitHub.
 ---
 
 Built with ❤️ using React Native, Expo, and Google Gemini AI
+
+Meet Lora - Your personal AI health companion 🏥

@@ -1,21 +1,21 @@
 {
   "expo": {
-    "name": "MyHealthApp",
-    "slug": "MyHealthApp",
+    "name": "Lora",
+    "slug": "Lora",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myhealthapp",
+      "scheme": "lora",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pranavkarthik.MyHeatlh",
       "infoPlist": {
-        "NSHealthShareUsageDescription": "This app needs access to your health data to provide personalized insights.",
-        "NSHealthUpdateUsageDescription": "This app needs to write workout data to Apple Health.",
-        "NSHealthClinicalHealthRecordsShareUsageDescription": "This app needs access to clinical health records for comprehensive analysis.",
-        "NSMicrophoneUsageDescription": "Allow microphone access to speak with the AI health companion"
+        "NSHealthShareUsageDescription": "Lora needs access to your health data to provide personalized insights.",
+        "NSHealthUpdateUsageDescription": "Lora needs to write workout data to Apple Health.",
+        "NSHealthClinicalHealthRecordsShareUsageDescription": "Lora needs access to clinical health records for comprehensive analysis.",
+        "NSMicrophoneUsageDescription": "Allow microphone access to speak with Lora, your AI health companion"
       },
       "appleTeamId": "ZC5P42MMZ2"
     },
