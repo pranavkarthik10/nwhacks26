@@ -1,10 +1,6 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as HealthService from "@/services/healthDataService";
 import { format, subDays } from "date-fns";
-
-// Initialize Gemini AI
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+import { llmService, generateText } from "@/services/llmService";
 
 interface HealthQueryResponse {
   text: string;
@@ -82,7 +78,8 @@ const healthTools = [
 // Process query and determine which tools to use
 export async function processHealthQuery(query: string): Promise<HealthQueryResponse> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+    // Initialize LLM service
+    await llmService.initialize();
 
     // First, analyze the query to determine which health data to fetch
     const analysisPrompt = `You are a health data assistant. Analyze this user query and determine which health metrics they want to see:
@@ -92,7 +89,7 @@ Query: "${query}"
 Available tools:
 ${healthTools.map((t, i) => `${i + 1}. ${t.name}: ${t.description}`).join("\n")}
 
-Respond in JSON format:
+Respond in JSON format ONLY (no markdown, no explanation):
 {
   "tools": ["tool1", "tool2"],
   "needsChart": true/false,
@@ -100,8 +97,7 @@ Respond in JSON format:
   "reasoning": "brief explanation"
 }`;
 
-    const analysisResult = await model.generateContent(analysisPrompt);
-    const analysisText = analysisResult.response.text();
+    const analysisText = await generateText(analysisPrompt);
     
     // Extract JSON from response (handle markdown code blocks)
     let analysis;
@@ -135,8 +131,7 @@ ${JSON.stringify(toolResults, null, 2)}
 
 Provide a friendly, conversational response about their health data. Be specific with numbers and provide insights. Keep it concise (2-3 sentences).`;
 
-    const responseResult = await model.generateContent(responsePrompt);
-    const responseText = responseResult.response.text();
+    const responseText = await generateText(responsePrompt);
 
     // Prepare chart data if needed
     let chartData = null;

@@ -19,6 +19,7 @@ import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { HealthChart } from "@/components/HealthChart";
+import { ModelSettings } from "@/components/ModelSettings";
 import { processHealthQuery } from "@/utils/aiHealthTools";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -67,6 +68,7 @@ export default function ChatScreen() {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>("");
   const [showChatHistory, setShowChatHistory] = useState(false);
+  const [showModelSettings, setShowModelSettings] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -326,15 +328,26 @@ export default function ChatScreen() {
           )}
         </TouchableOpacity>
 
-        <View style={styles.headerCenter}>
+        <TouchableOpacity 
+          onPress={() => setShowModelSettings(true)} 
+          style={styles.headerCenter}
+          activeOpacity={0.7}
+        >
           <Text style={styles.headerTitle}>Health AI</Text>
           <View style={styles.statusDot} />
-        </View>
+          <Ionicons name="chevron-down" size={16} color="#8E8E93" />
+        </TouchableOpacity>
 
         <TouchableOpacity onPress={createNewChat} style={styles.iconButton}>
           <Ionicons name="add" size={28} color="#007AFF" />
         </TouchableOpacity>
       </View>
+
+      {/* Model Settings Modal */}
+      <ModelSettings
+        visible={showModelSettings}
+        onClose={() => setShowModelSettings(false)}
+      />
 
       {/* Chat History Modal */}
       <Modal
