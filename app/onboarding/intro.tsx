@@ -23,36 +23,36 @@ export default function IntroScreen() {
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.iconCircle}>
-            <Ionicons name="heart" size={64} color="#FF3B30" />
+            <Ionicons name="sparkles" size={64} color="#007AFF" />
           </View>
-          <Text style={styles.appName}>MyHealth</Text>
-          <Text style={styles.tagline}>Your AI Health Companion</Text>
+          <Text style={styles.appName}>Lora</Text>
+          <Text style={styles.tagline}>Your Personal AI Health Assistant</Text>
         </View>
 
         {/* Features Section */}
         <View style={styles.featuresSection}>
-          <Text style={styles.sectionTitle}>What You Get</Text>
+          <Text style={styles.sectionTitle}>Meet Lora</Text>
           
           <View style={styles.featureCard}>
             <View style={[styles.featureIcon, { backgroundColor: "#E8F4FF" }]}>
-              <Ionicons name="analytics" size={24} color="#007AFF" />
+              <Ionicons name="chatbubble-ellipses" size={24} color="#007AFF" />
             </View>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Health Insights</Text>
+              <Text style={styles.featureTitle}>Talk Naturally</Text>
               <Text style={styles.featureDesc}>
-                Track and analyze your health data with AI-powered insights
+                Chat with Lora about your health just like talking to a friend
               </Text>
             </View>
           </View>
 
           <View style={styles.featureCard}>
             <View style={[styles.featureIcon, { backgroundColor: "#E8FFE8" }]}>
-              <Ionicons name="chatbubble" size={24} color="#34C759" />
+              <Ionicons name="pulse" size={24} color="#34C759" />
             </View>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>AI Chat Assistant</Text>
+              <Text style={styles.featureTitle}>Personalized Insights</Text>
               <Text style={styles.featureDesc}>
-                Ask health questions and get personalized responses instantly
+                Lora analyzes your health trends and gives tailored advice
               </Text>
             </View>
           </View>
@@ -64,7 +64,7 @@ export default function IntroScreen() {
             <View style={styles.featureContent}>
               <Text style={styles.featureTitle}>Your Privacy Matters</Text>
               <Text style={styles.featureDesc}>
-                Choose between cloud AI or fully offline on-device processing
+                Choose between cloud AI or fully offline processing with Lora
               </Text>
             </View>
           </View>
@@ -111,11 +111,11 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "#FFE5E5",
+    backgroundColor: "#E8F4FF",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
-    shadowColor: "#FF3B30",
+    shadowColor: "#007AFF",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 16,

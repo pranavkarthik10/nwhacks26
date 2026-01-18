@@ -183,7 +183,7 @@ export default function PrivacyScreen() {
 
         {/* Title */}
         <Text style={styles.title}>Choose Your Privacy</Text>
-        <Text style={styles.subtitle}>How would you like to use AI?</Text>
+        <Text style={styles.subtitle}>How would you like Lora to work?</Text>
 
           {/* Choice Cards */}
           <View style={styles.choicesContainer}>

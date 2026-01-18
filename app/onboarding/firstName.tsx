@@ -81,7 +81,7 @@ export default function FirstNameScreen() {
 
         {/* Title */}
         <Text style={styles.title}>What's your first name?</Text>
-        <Text style={styles.subtitle}>We'd love to know who you are</Text>
+        <Text style={styles.subtitle}>Lora would love to know who you are</Text>
 
         {/* Form Section */}
         <View style={styles.formSection}>

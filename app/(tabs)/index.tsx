@@ -241,7 +241,7 @@ export default function Index() {
           onPress: async () => {
             try {
               await AsyncStorage.clear();
-              router.replace("/onboarding/welcome");
+              router.replace("/onboarding/intro");
             } catch (error) {
               Alert.alert("Error", "Failed to reset onboarding");
               console.error(error);
