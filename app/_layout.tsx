@@ -1,62 +1,65 @@
-import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { Platform, StyleSheet } from "react-native";
-import { BlurView } from "expo-blur";
+import { Stack, useRouter, useSegments } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, View, StyleSheet } from "react-native";
+import { hasCompletedOnboarding } from "@/utils/storage";
 
 export default function RootLayout() {
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    // Initial load delay to let the app mount
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inOnboarding = segments[0] === "onboarding";
+    const inTabs = segments[0] === "(tabs)";
+
+    // Re-check onboarding status when navigating
+    const recheckAndRoute = async () => {
+      const completed = await hasCompletedOnboarding();
+      
+      if (!completed && !inOnboarding) {
+        // User hasn't completed onboarding, redirect to onboarding
+        router.replace("/onboarding/welcome");
+      } else if (completed && !inOnboarding && !inTabs) {
+        // User has completed onboarding, redirect to main app
+        router.replace("/(tabs)");
+      }
+    };
+
+    recheckAndRoute();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, segments]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: "#007AFF",
-        tabBarInactiveTintColor: "#8E8E93",
-        tabBarBackground: () => (
-          <BlurView
-            intensity={80}
-            tint="light"
-            style={StyleSheet.absoluteFill}
-          />
-        ),
-        tabBarStyle: {
-          position: "absolute",
-          borderTopWidth: 0,
-          elevation: 0,
-          height: Platform.OS === "ios" ? 85 : 60,
-          paddingTop: 8,
-          backgroundColor: "transparent",
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-        },
-        headerShown: false,
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Health",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "heart" : "heart-outline"} 
-              size={24} 
-              color={color} 
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: "AI Chat",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "sparkles" : "sparkles-outline"} 
-              size={24} 
-              color={color} 
-            />
-          ),
-        }}
-      />
-    </Tabs>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="(tabs)" />
+    </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F2F2F7",
+  },
+});
