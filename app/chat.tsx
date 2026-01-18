@@ -12,6 +12,7 @@ import {
   Alert,
   Modal,
   Dimensions,
+  Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -67,7 +68,18 @@ export default function ChatScreen() {
   const [currentChatId, setCurrentChatId] = useState<string>("");
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Track keyboard visibility
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardWillShow", () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener("keyboardWillHide", () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Load chat sessions on mount
   useEffect(() => {
@@ -409,7 +421,7 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         style={styles.chatArea}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={insets.top + 60}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           ref={scrollViewRef}
@@ -417,7 +429,7 @@ export default function ChatScreen() {
           contentContainerStyle={[
             styles.messagesContent,
             showOnlyWelcome && styles.messagesContentCentered,
-            { paddingBottom: insets.bottom + 100 },
+            { paddingBottom: 120 },
           ]}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
@@ -440,8 +452,8 @@ export default function ChatScreen() {
           )}
         </ScrollView>
 
-        {/* Suggestions - only show on welcome screen */}
-        {showOnlyWelcome && (
+        {/* Suggestions - only show on welcome screen when keyboard is closed */}
+        {showOnlyWelcome && !keyboardVisible && (
           <View style={styles.suggestionsContainer}>
             <Text style={styles.suggestionsTitle}>Try asking</Text>
             <ScrollView 
@@ -467,7 +479,7 @@ export default function ChatScreen() {
         )}
 
         {/* Bottom Input Area */}
-        <View style={[styles.inputWrapper, { paddingBottom: Math.max(insets.bottom, 20) + 90 }]}>
+        <View style={[styles.inputWrapper, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 16) + 80 }]}>
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
@@ -478,8 +490,6 @@ export default function ChatScreen() {
               multiline
               maxLength={500}
               editable={!isLoading}
-              onSubmitEditing={() => handleSend()}
-              blurOnSubmit={false}
             />
             
             <View style={styles.inputActions}>
@@ -508,9 +518,11 @@ export default function ChatScreen() {
             </View>
           </View>
           
-          <Text style={styles.disclaimer}>
-            AI can make mistakes. Verify health information with professionals.
-          </Text>
+          {!keyboardVisible && (
+            <Text style={styles.disclaimer}>
+              AI can make mistakes. Verify health information with professionals.
+            </Text>
+          )}
         </View>
       </KeyboardAvoidingView>
     </View>

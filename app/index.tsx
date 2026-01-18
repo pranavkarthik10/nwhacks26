@@ -41,21 +41,31 @@ export default function Index() {
     return sorted[0].value;
   };
 
-  // Calculate total sleep duration (in hours)
+  // Calculate total sleep duration (in hours) for TODAY only
+  // Only count sleep that ended TODAY (handles midnight crossings)
   const getTotalSleep = (sleepSamples: any[]) => {
     if (!sleepSamples.length) return "--";
+
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).getTime();
 
     let totalMs = 0;
     sleepSamples.forEach((sample) => {
       if (sample.value !== "AWAKE") {
-        const start = new Date(sample.startDate).getTime();
-        const end = new Date(sample.endDate).getTime();
-        totalMs += end - start;
+        const endTime = new Date(sample.endDate).getTime();
+        
+        // Only count if sleep ended today
+        if (endTime >= todayStart && endTime < todayEnd) {
+          const start = new Date(sample.startDate).getTime();
+          const end = endTime;
+          totalMs += end - start;
+        }
       }
     });
 
     const hours = totalMs / (1000 * 60 * 60);
-    return hours.toFixed(1); // e.g. "7.5"
+    return hours === 0 ? "--" : hours.toFixed(1); // e.g. "7.5"
   };
 
   // Track if we've shown alerts to prevent duplicates
@@ -63,8 +73,11 @@ export default function Index() {
   const hasShownNoDataRef = React.useRef(false);
 
   useEffect(() => {
+    // Only show error if: we have an error AND NO success (all fetches failed)
+    // Don't show if we have success (some data loaded successfully)
     if (error && !success && !hasShownErrorRef.current) {
       hasShownErrorRef.current = true;
+      console.log("Showing error alert:", error);
       Alert.alert("Cannot fetch health data", error || "Please try again!", [
         {
           text: "Try Again",
@@ -148,6 +161,17 @@ export default function Index() {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
+  const formatNumber = (num: any) => {
+    if (!num || num === "--") return "--";
+    const parsed = parseFloat(num);
+    if (isNaN(parsed)) return "--";
+    // Remove trailing zeros and unnecessary decimals
+    return parsed.toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    });
+  };
+
   const SyncDataView = () => (
     <ScrollView style={styles.syncDataView} showsVerticalScrollIndicator={false}>
       {/* Header */}
@@ -175,7 +199,7 @@ export default function Index() {
             </View>
             <Text style={styles.cardLabel}>Steps</Text>
           </View>
-          <Text style={styles.cardValue}>{steps ? steps.toLocaleString() : "--"}</Text>
+            <Text style={styles.cardValue}>{formatNumber(steps)}</Text>
           <Text style={styles.cardUnit}>steps today</Text>
         </TouchableOpacity>
 
@@ -184,7 +208,7 @@ export default function Index() {
             <View style={styles.cardIconBg}>
               <Ionicons name="heart" size={20} color="#FF2D55" />
             </View>
-            <Text style={styles.cardValueSmall}>{getLatestHeartRate(heartRate)}</Text>
+            <Text style={styles.cardValueSmall}>{formatNumber(getLatestHeartRate(heartRate))}</Text>
             <Text style={styles.cardUnitSmall}>BPM</Text>
           </TouchableOpacity>
 
@@ -192,7 +216,7 @@ export default function Index() {
             <View style={styles.cardIconBg}>
               <MaterialIcons name="local-fire-department" size={20} color="#FF3B30" />
             </View>
-            <Text style={styles.cardValueSmall}>{calories || "--"}</Text>
+            <Text style={styles.cardValueSmall}>{formatNumber(calories)}</Text>
             <Text style={styles.cardUnitSmall}>kcal</Text>
           </TouchableOpacity>
         </View>
@@ -204,7 +228,7 @@ export default function Index() {
             </View>
             <Text style={styles.cardLabel}>Sleep</Text>
           </View>
-          <Text style={styles.cardValue}>{getTotalSleep(sleep)}</Text>
+            <Text style={styles.cardValue}>{formatNumber(getTotalSleep(sleep))}</Text>
           <Text style={styles.cardUnit}>hours last night</Text>
         </TouchableOpacity>
       </View>

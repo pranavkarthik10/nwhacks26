@@ -229,10 +229,10 @@ function prepareChartData(toolResults: any, chartType: "line" | "bar" | null) {
   );
 
   if (resultWithSamples) {
-    const samples = resultWithSamples.data.samples.slice(-7); // Last 7 samples
-    console.log("Found samples:", samples.length);
+    const allSamples = resultWithSamples.data.samples;
+    console.log("Found samples:", allSamples.length);
     
-    if (samples.length === 0) {
+    if (allSamples.length === 0) {
       return null;
     }
 
@@ -255,25 +255,75 @@ function prepareChartData(toolResults: any, chartType: "line" | "bar" | null) {
       type = "bar";
     }
 
+    // Group sleep data by day if needed
+    let labels: string[] = [];
+    let chartDatasets: number[] = [];
+
+    if (resultWithSamples.name.includes("Sleep")) {
+      // Aggregate sleep by END day (sleep that ends on a day counts for that day)
+      // This handles sleep that crosses midnight properly
+      const sleepByDay: { [key: string]: number } = {};
+      
+      console.log(`Processing ${allSamples.length} sleep samples`);
+      
+      allSamples.forEach((s: any) => {
+        if (s.value !== "AWAKE") {
+          // Use END date for grouping (when sleep session ended)
+          const endDate = new Date(s.endDate);
+          const dayKey = format(endDate, "yyyy-MM-dd");
+          
+          const start = new Date(s.startDate).getTime();
+          const end = new Date(s.endDate).getTime();
+          const durationHours = (end - start) / (1000 * 60 * 60);
+          
+          console.log(`Sleep: ${dayKey} duration: ${durationHours.toFixed(2)}h start: ${new Date(s.startDate).toISOString()} end: ${new Date(s.endDate).toISOString()}`);
+          
+          sleepByDay[dayKey] = (sleepByDay[dayKey] || 0) + durationHours;
+        }
+      });
+
+      console.log("Sleep aggregated by day:", sleepByDay);
+
+      // Get unique days from data
+      const uniqueDays = Object.keys(sleepByDay).sort();
+      console.log(`Found sleep data for ${uniqueDays.length} unique days:`, uniqueDays);
+
+      // Only show days that have data, don't backfill empty days
+      labels = uniqueDays.map(day => format(new Date(day), "MMM dd"));
+      chartDatasets = uniqueDays.map(day => Math.round((sleepByDay[day] || 0) * 10) / 10);
+    } else {
+      // For other metrics, limit to last 7 samples and show their dates
+      const samples = allSamples.slice(-7);
+      
+      labels = samples.map((s: any) => {
+        if (s.startDate) {
+          const date = new Date(s.startDate);
+          return format(date, "MMM dd");
+        }
+        return `Sample ${samples.indexOf(s) + 1}`;
+      });
+
+      chartDatasets = samples.map((s: any) => {
+        if (typeof s.value === 'number') return Math.round(s.value);
+        if (s.quantity) return Math.round(s.quantity);
+        return 0;
+      });
+    }
+
+    // Only create chart if we have data
+    if (labels.length === 0 || !chartDatasets.some(d => d > 0)) {
+      console.log("No valid chart data after processing");
+      return null;
+    }
+
     const chartData = {
       type,
       title,
       data: {
-        labels: samples.map((s: any, i: number) => {
-          if (s.startDate) {
-            const date = new Date(s.startDate);
-            return format(date, "MMM dd");
-          }
-          return `Day ${i + 1}`;
-        }),
+        labels,
         datasets: [
           {
-            data: samples.map((s: any) => {
-              // Handle different value formats
-              if (typeof s.value === 'number') return Math.round(s.value);
-              if (s.quantity) return Math.round(s.quantity);
-              return 0;
-            }),
+            data: chartDatasets,
           },
         ],
       },

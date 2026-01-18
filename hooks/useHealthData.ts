@@ -58,8 +58,20 @@ const useHealthData = (date: Date) => {
     console.log("Checking HealthKit permissions...");
     RCTAppleHealthKit.getAuthStatus(permissions, (err: string, results: any) => {
       if (err) {
-        setError(`Error checking permissions: ${err}`);
-        console.error("Error checking permissions:", err);
+        console.warn("Error checking permissions (this is normal on first run):", err);
+        // On first run, auth status check might fail - proceed to init
+        console.log("Initializing HealthKit for first time...");
+        RCTAppleHealthKit.initHealthKit(permissions, (initErr: string) => {
+          if (initErr) {
+            setError(`Error initializing HealthKit: ${initErr}`);
+            console.error("Error initializing HealthKit:", initErr);
+            return;
+          }
+          console.log("HealthKit initialized ✅");
+          setHasPermissions(true);
+          setError(null); // Clear any previous errors
+          callback();
+        });
         return;
       }
 
@@ -70,8 +82,9 @@ const useHealthData = (date: Date) => {
       );
 
       if (allGranted) {
-        console.log("All permissions granted ✅");
+        console.log("All permissions already granted ✅");
         setHasPermissions(true);
+        setError(null); // Clear any previous errors
         callback();
       } else {
         console.log("Requesting HealthKit permissions...");
@@ -83,6 +96,7 @@ const useHealthData = (date: Date) => {
           }
           console.log("HealthKit initialized ✅");
           setHasPermissions(true);
+          setError(null); // Clear any previous errors
           callback();
         });
       }
@@ -90,9 +104,10 @@ const useHealthData = (date: Date) => {
   };
 
   // Fetch data once permissions are confirmed
-  const fetchData = (fetchOptions: HealthInputOptions) => {
+  // skipPermissionCheck allows bypassing the stale state check when called right after setHasPermissions
+  const fetchData = (fetchOptions: HealthInputOptions, skipPermissionCheck = false) => {
     if (!ensureHealthKitAvailable()) return;
-    if (!hasPermissions) {
+    if (!skipPermissionCheck && !hasPermissions) {
       setError("Health permissions not granted");
       return;
     }
@@ -111,19 +126,20 @@ const useHealthData = (date: Date) => {
       
       if (completedFetches === totalFetches) {
         console.log(`All fetches complete! ${successfulFetches}/${totalFetches} successful`);
+        setDataTimestamp(new Date().toISOString());
         
         if (successfulFetches > 0) {
+          // We got at least some data - success!
           setSuccess(true);
-          // Only set error if ALL fetches failed
-          if (successfulFetches === 0) {
-            setError(`Failed to fetch: ${fetchErrors.join(", ")}`);
-          } else if (fetchErrors.length > 0) {
-            console.warn(`Some fetches failed: ${fetchErrors.join(", ")}`);
+          setError(null); // Clear any error if we got data
+          if (fetchErrors.length > 0) {
+            console.warn(`Some fetches failed, but got ${successfulFetches} successful: ${fetchErrors.join(", ")}`);
           }
         } else {
+          // All fetches failed - set error
+          setSuccess(false);
           setError(fetchErrors.length > 0 ? `Failed to fetch: ${fetchErrors.join(", ")}` : "Failed to fetch health data");
         }
-        setDataTimestamp(new Date().toISOString());
       }
     };
 
@@ -185,16 +201,124 @@ const useHealthData = (date: Date) => {
     );
   };
 
-  // Core trigger function
+  // Core trigger function for manual refresh/button press
   const triggerFetch = () => {
+    console.log("Manual fetch triggered (button press or refresh)");
+    setError(null); // Clear any previous errors before fetching
+    
     const options: HealthInputOptions = {
       date: date.toISOString(),
       startDate: new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString(),
       endDate: date.toISOString(),
     };
 
-    checkAndRequestPermissions(() => fetchData(options));
+    // Use same logic as auto-fetch, no error dialogs
+    if (!ensureHealthKitAvailable()) {
+      return;
+    }
+
+    RCTAppleHealthKit.getAuthStatus(permissions, (err: string, results: any) => {
+      if (err) {
+        console.log("Requesting HealthKit permissions for manual fetch...");
+        RCTAppleHealthKit.initHealthKit(permissions, (initErr: string) => {
+          if (!initErr) {
+            setHasPermissions(true);
+            setError(null);
+            fetchData(options, true); // Skip permission check since we just set it
+          } else {
+            console.error("Error during permission init:", initErr);
+            setError("Unable to access HealthKit");
+          }
+        });
+      } else {
+        const readPermissions = permissions.permissions.read;
+        const allGranted = readPermissions.every((perm) => results[perm] === 2);
+        
+        if (allGranted) {
+          console.log("Permissions already exist, fetching...");
+          setHasPermissions(true);
+          setError(null);
+          fetchData(options, true); // Skip permission check since we just set it
+        } else {
+          console.log("Requesting full HealthKit permissions...");
+          RCTAppleHealthKit.initHealthKit(permissions, (initErr: string) => {
+            if (!initErr) {
+              setHasPermissions(true);
+              setError(null);
+              fetchData(options, true); // Skip permission check since we just set it
+            } else {
+              console.error("Error during permission init:", initErr);
+              setError("Unable to access HealthKit");
+            }
+          });
+        }
+      }
+    });
   };
+
+  // Auto-fetch on mount - check permissions first silently
+  useEffect(() => {
+    console.log("useHealthData mounted, checking permissions...");
+    
+    if (!ensureHealthKitAvailable()) {
+      console.log("HealthKit not available on this platform");
+      return;
+    }
+
+    // Check if we already have permissions without showing errors
+    RCTAppleHealthKit.getAuthStatus(permissions, (err: string, results: any) => {
+      if (err) {
+        console.log("First time - permissions not yet granted, requesting...");
+        // First time, request permissions
+        RCTAppleHealthKit.initHealthKit(permissions, (initErr: string) => {
+          if (!initErr) {
+            console.log("HealthKit permissions granted, fetching data...");
+            setHasPermissions(true);
+            setError(null);
+            // Fetch after permissions granted
+            const options: HealthInputOptions = {
+              date: date.toISOString(),
+              startDate: new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString(),
+              endDate: date.toISOString(),
+            };
+            fetchData(options, true); // Skip permission check since we just set it
+          } else {
+            console.error("Error during permission init:", initErr);
+          }
+        });
+      } else {
+        // Permissions already exist, just fetch
+        const readPermissions = permissions.permissions.read;
+        const allGranted = readPermissions.every((perm) => results[perm] === 2);
+        
+        if (allGranted) {
+          console.log("Permissions already granted, fetching data...");
+          setHasPermissions(true);
+          setError(null);
+          const options: HealthInputOptions = {
+            date: date.toISOString(),
+            startDate: new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString(),
+            endDate: date.toISOString(),
+          };
+          fetchData(options, true); // Skip permission check since we just set it
+        } else {
+          console.log("Permissions partially granted, requesting full permissions...");
+          RCTAppleHealthKit.initHealthKit(permissions, (initErr: string) => {
+            if (!initErr) {
+              setHasPermissions(true);
+              setError(null);
+              const options: HealthInputOptions = {
+                date: date.toISOString(),
+                startDate: new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString(),
+                endDate: date.toISOString(),
+              };
+              fetchData(options, true); // Skip permission check since we just set it
+            }
+          });
+        }
+      }
+    });
+  }, []);
 
   // Hook API
   return {
