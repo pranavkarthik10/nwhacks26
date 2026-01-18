@@ -23,6 +23,7 @@
     "date-fns": "^4.1.0",
     "elevenlabs": "^1.59.0",
     "expo": "~54.0.10",
+    "expo-av": "~16.0.8",
     "expo-blur": "^15.0.8",
     "expo-constants": "~18.0.9",
     "expo-dev-client": "~6.0.12",

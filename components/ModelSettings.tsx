@@ -14,21 +14,30 @@ import {
   Alert,
   ScrollView,
   Platform,
+  Switch,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { llmService, LLMProvider, LocalModelStatus } from "@/services/llmService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { voiceService } from "@/services/voiceService";
 
 interface ModelSettingsProps {
   visible: boolean;
   onClose: () => void;
 }
 
+const VOICE_ENABLED_KEY = "@health_voice_enabled";
+
 export function ModelSettings({ visible, onClose }: ModelSettingsProps) {
   const insets = useSafeAreaInsets();
   const [currentProvider, setCurrentProvider] = useState<LLMProvider>("gemini");
   const [localStatus, setLocalStatus] = useState<LocalModelStatus | null>(null);
   const [isLoadingModel, setIsLoadingModel] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState(voiceService.getSelectedVoice());
+  const [availableVoices, setAvailableVoices] = useState(voiceService.getAvailableVoices());
+  const [testingVoiceId, setTestingVoiceId] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
     await llmService.initialize();
@@ -42,6 +51,7 @@ export function ModelSettings({ visible, onClose }: ModelSettingsProps) {
   useEffect(() => {
     if (visible) {
       loadStatus();
+      loadVoicePreferences();
       
       // Poll for status updates while loading
       const interval = setInterval(async () => {
@@ -56,12 +66,51 @@ export function ModelSettings({ visible, onClose }: ModelSettingsProps) {
     }
   }, [visible, loadStatus]);
 
+  const loadVoicePreferences = async () => {
+    try {
+      const enabled = await AsyncStorage.getItem(VOICE_ENABLED_KEY);
+      if (enabled !== null) {
+        setIsVoiceEnabled(JSON.parse(enabled));
+      }
+    } catch (error) {
+      console.error("Error loading voice preferences:", error);
+    }
+  };
+
+  const handleVoiceToggle = async (enabled: boolean) => {
+    setIsVoiceEnabled(enabled);
+    await AsyncStorage.setItem(VOICE_ENABLED_KEY, JSON.stringify(enabled));
+  };
+
+  const handleVoiceSelect = (voiceId: string) => {
+    const voice = availableVoices.find((v) => v.voiceId === voiceId);
+    if (voice) {
+      setSelectedVoice(voice);
+      voiceService.setVoice(voiceId);
+    }
+  };
+
+  const handleTestVoice = async (voiceId: string) => {
+    if (testingVoiceId) return;
+    try {
+      setTestingVoiceId(voiceId);
+      voiceService.setVoice(voiceId);
+      const testText = "Hello! I'm your health AI assistant. This is a sample of my voice.";
+      await voiceService.speak(testText);
+      setTimeout(() => setTestingVoiceId(null), 3000);
+    } catch (error) {
+      console.error("Error testing voice:", error);
+      Alert.alert("Error", "Failed to play voice sample");
+      setTestingVoiceId(null);
+    }
+  };
+
   const selectProvider = async (provider: LLMProvider) => {
     if (provider === "local") {
       if (!localStatus?.available) {
         Alert.alert(
-          "Not Available",
-          localStatus?.reason || "Local models require a physical iPhone with Metal GPU.",
+          "Setup Required",
+          localStatus?.reason || "To enable on-device AI, add MLX Swift packages via Xcode. See LOCAL_MODEL_SETUP.md",
           [{ text: "OK" }]
         );
         return;
@@ -285,6 +334,69 @@ export function ModelSettings({ visible, onClose }: ModelSettingsProps) {
                 </View>
               </View>
             )}
+
+            {/* Voice Settings Section */}
+            <Text style={[styles.sectionTitle, { marginTop: 28 }]}>Voice Assistant</Text>
+            
+            <View style={styles.voiceSection}>
+              <View style={styles.voiceToggleContainer}>
+                <View style={styles.voiceToggleLabel}>
+                  <Ionicons name="volume-high" size={20} color="#007AFF" />
+                  <Text style={styles.voiceToggleLabelText}>Enable Voice Responses</Text>
+                </View>
+                <Switch
+                  value={isVoiceEnabled}
+                  onValueChange={handleVoiceToggle}
+                  trackColor={{ false: "#E5E5EA", true: "#81C784" }}
+                  thumbColor={isVoiceEnabled ? "#4CAF50" : "#C7C7CC"}
+                />
+              </View>
+
+              {isVoiceEnabled && (
+                <>
+                  <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Select Voice</Text>
+                  <View style={styles.voicesList}>
+                    {availableVoices.map((voice) => (
+                      <TouchableOpacity
+                        key={voice.voiceId}
+                        style={[
+                          styles.voiceOption,
+                          selectedVoice.voiceId === voice.voiceId && styles.voiceOptionSelected,
+                        ]}
+                        onPress={() => handleVoiceSelect(voice.voiceId)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.voiceOptionContent}>
+                          <Ionicons
+                            name={selectedVoice.voiceId === voice.voiceId ? "radio-button-on" : "radio-button-off"}
+                            size={18}
+                            color="#007AFF"
+                          />
+                          <Text
+                            style={[
+                              styles.voiceOptionText,
+                              selectedVoice.voiceId === voice.voiceId && styles.voiceOptionTextActive,
+                            ]}
+                          >
+                            {voice.name}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => handleTestVoice(voice.voiceId)}
+                          disabled={testingVoiceId !== null}
+                        >
+                          {testingVoiceId === voice.voiceId ? (
+                            <ActivityIndicator color="#007AFF" size="small" />
+                          ) : (
+                            <Ionicons name="play-circle" size={22} color="#007AFF" />
+                          )}
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+            </View>
 
             {/* Privacy Note */}
             <View style={styles.privacyNote}>
@@ -521,5 +633,62 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#1C1C1E",
     lineHeight: 18,
+  },
+  voiceSection: {
+    marginBottom: 20,
+  },
+  voiceToggleContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F2F2F7",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  voiceToggleLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  voiceToggleLabelText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1C1C1E",
+  },
+  voicesList: {
+    gap: 10,
+  },
+  voiceOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F2F2F7",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#E5E5EA",
+  },
+  voiceOptionSelected: {
+    backgroundColor: "#E8F0FE",
+    borderColor: "#007AFF",
+  },
+  voiceOptionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  voiceOptionText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#1C1C1E",
+  },
+  voiceOptionTextActive: {
+    color: "#007AFF",
+    fontWeight: "600",
   },
 });

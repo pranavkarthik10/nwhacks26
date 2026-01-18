@@ -28,7 +28,7 @@ export default function RootLayout() {
       
       if (!completed && !inOnboarding) {
         // User hasn't completed onboarding, redirect to onboarding
-        router.replace("/onboarding/welcome");
+        router.replace("/onboarding/intro");
       } else if (completed && !inOnboarding && !inTabs) {
         // User has completed onboarding, redirect to main app
         router.replace("/(tabs)");

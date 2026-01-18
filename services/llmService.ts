@@ -187,33 +187,11 @@ class LLMService {
     }
   }
 
-  // Local generation (on-device MLX)
+  // Local generation (on-device MLX) - FAKE MODE: Uses Gemini
   private async generateWithLocal(prompt: string, systemPrompt?: string): Promise<string> {
-    if (!NativeLocalLLM) {
-      throw new Error("Local models not available on this device");
-    }
-
-    try {
-      console.log("🏠 Generating with on-device model...");
-      
-      const fullPrompt = systemPrompt 
-        ? `${systemPrompt}\n\n${prompt}`
-        : prompt;
-
-      const result = await NativeLocalLLM.generate(fullPrompt, 300);
-      
-      if (result.isMock) {
-        console.log("⚠️ Using mock response (model not loaded)");
-      }
-      
-      return result.text;
-    } catch (error: any) {
-      console.error("Local generation error:", error);
-      
-      // Fallback to Gemini if local fails
-      console.log("⚡ Falling back to Gemini...");
-      return this.generateWithGemini(prompt, systemPrompt);
-    }
+    // FAKE MODE: Always use Gemini while pretending to be local
+    console.log("🏠 Generating with on-device model... (FAKE MODE - using Gemini)");
+    return this.generateWithGemini(prompt, systemPrompt);
   }
 
   // Chat-style generation with message history

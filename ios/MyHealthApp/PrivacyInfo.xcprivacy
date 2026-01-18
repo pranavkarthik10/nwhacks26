@@ -42,6 +42,15 @@
 	</array>
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array/>
+	<key>NSPrivacyConnectedNetworking</key>
+	<array>
+		<dict>
+			<key>NSPrivacyConnectedNetworkingDomains</key>
+			<array>
+				<string>huggingface.co</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSPrivacyTracking</key>
 	<false/>
 </dict>

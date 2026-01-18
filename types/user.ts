@@ -2,7 +2,6 @@
 
 export interface UserPreferences {
   firstName: string;
-  lastName: string;
   hasCompletedOnboarding: boolean;
   aiPrivacyConsent: boolean; // true = Gemini API, false = On-device ML
   onboardingCompletedAt: string; // ISO date string
@@ -10,5 +9,4 @@ export interface UserPreferences {
 
 export interface OnboardingFormData {
   firstName: string;
-  lastName: string;
 }

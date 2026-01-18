@@ -12,40 +12,30 @@ import {
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { OnboardingFormData } from "@/types/user";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export default function WelcomeScreen() {
+export default function FirstNameScreen() {
   const insets = useSafeAreaInsets();
-  const [formData, setFormData] = useState<OnboardingFormData>({
-    firstName: "",
-    lastName: "",
-  });
+  const [firstName, setFirstName] = useState("");
 
-  const isValid = formData.firstName.trim().length >= 2 && formData.lastName.trim().length >= 2;
+  const isValid = firstName.trim().length >= 2;
 
   const handleDebugReset = async () => {
     Alert.alert(
       "Debug: Reset Onboarding",
       "This will clear all saved data and restart onboarding",
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "Cancel", style: "cancel" },
         {
           text: "Reset",
           style: "destructive",
           onPress: async () => {
             try {
               await AsyncStorage.clear();
-              Alert.alert("Success", "All data cleared! App will reload.", [
+              Alert.alert("Success", "All data cleared!", [
                 {
                   text: "OK",
-                  onPress: () => {
-                    // Force reload by navigating to root
-                    router.replace("/onboarding/welcome");
-                  },
+                  onPress: () => router.replace("/onboarding/intro"),
                 },
               ]);
             } catch (error) {
@@ -60,13 +50,9 @@ export default function WelcomeScreen() {
 
   const handleContinue = () => {
     if (isValid) {
-      // Store in temp state and navigate to privacy screen
       router.push({
         pathname: "/onboarding/privacy",
-        params: {
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-        },
+        params: { firstName: firstName.trim() },
       });
     }
   };
@@ -94,42 +80,23 @@ export default function WelcomeScreen() {
         <Text style={styles.progressText}>Step 1 of 2</Text>
 
         {/* Title */}
-        <Text style={styles.title}>Welcome to MyHealth</Text>
+        <Text style={styles.title}>What's your first name?</Text>
+        <Text style={styles.subtitle}>We'd love to know who you are</Text>
 
         {/* Form Section */}
         <View style={styles.formSection}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>First Name</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.firstName}
-              onChangeText={(text) =>
-                setFormData({ ...formData, firstName: text })
-              }
-              placeholder="Enter your first name"
-              placeholderTextColor="#8E8E93"
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="next"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Last Name</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.lastName}
-              onChangeText={(text) =>
-                setFormData({ ...formData, lastName: text })
-              }
-              placeholder="Enter your last name"
-              placeholderTextColor="#8E8E93"
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={handleContinue}
-            />
-          </View>
+          <TextInput
+            style={styles.input}
+            value={firstName}
+            onChangeText={setFirstName}
+            placeholder="Enter your first name"
+            placeholderTextColor="#8E8E93"
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="next"
+            onSubmitEditing={handleContinue}
+            autoFocus
+          />
         </View>
 
         {/* Spacer */}
@@ -190,44 +157,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#8E8E93",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 32,
     fontWeight: "500",
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "700",
     color: "#1C1C1E",
-    textAlign: "center",
+    marginBottom: 8,
     letterSpacing: -0.5,
-    marginBottom: 24,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: "#8E8E93",
+    marginBottom: 32,
+    lineHeight: 20,
   },
   formSection: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 20,
+    padding: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
   },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1C1C1E",
-    marginBottom: 8,
-  },
   input: {
     backgroundColor: "#F2F2F7",
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
+    paddingVertical: 16,
+    fontSize: 18,
     color: "#1C1C1E",
-    borderWidth: 1,
-    borderColor: "#E5E5EA",
+    fontWeight: "500",
   },
   spacer: {
     flex: 1,

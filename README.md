@@ -28,6 +28,18 @@ An intelligent health companion app that integrates Apple HealthKit data with Go
 - "What's my calorie burn for today?"
 - "Compare my activity this week to last week"
 
+### 🎙️ Voice AI Responses
+- **Natural Voice Output**: Hear responses from AI in natural human voices
+- **5 Voice Options**: Choose from Rachel, Bella, Antoni, Arnold, or Domi
+- **Voice Preview**: Test voices before selecting your preference
+- **Automatic Playback**: AI responses spoken automatically
+
+### 💾 Chat Persistence
+- **Auto-Save**: Every conversation automatically saved to device
+- **Chat History**: Browse and revisit previous conversations
+- **Multiple Sessions**: Switch between different chat conversations
+- **Persistent Across Sessions**: Your last chat automatically loads when you open the app
+
 ## 🚀 Quick Start
 
 ### Prerequisites

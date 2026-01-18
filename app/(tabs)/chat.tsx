@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { HealthChart } from "@/components/HealthChart";
 import { ModelSettings } from "@/components/ModelSettings";
 import { processHealthQuery } from "@/utils/aiHealthTools";
+import { voiceService } from "@/services/voiceService";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -71,6 +72,7 @@ export default function ChatScreen() {
   const [showModelSettings, setShowModelSettings] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Track keyboard visibility
@@ -83,10 +85,23 @@ export default function ChatScreen() {
     };
   }, []);
 
-  // Load chat sessions on mount
+  // Load chat sessions and voice settings on mount
   useEffect(() => {
     loadChatSessions();
+    loadVoiceSettings();
+    voiceService.initialize();
   }, []);
+
+  const loadVoiceSettings = async () => {
+    try {
+      const enabled = await AsyncStorage.getItem("@health_voice_enabled");
+      if (enabled !== null) {
+        setIsVoiceEnabled(JSON.parse(enabled));
+      }
+    } catch (error) {
+      console.error("Error loading voice settings:", error);
+    }
+  };
 
   // Save current chat whenever messages change
   useEffect(() => {
@@ -235,6 +250,16 @@ export default function ChatScreen() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+
+      // Play voice response if enabled
+      if (isVoiceEnabled) {
+        try {
+          await voiceService.speak(response.text);
+        } catch (voiceError) {
+          console.error("Error playing voice response:", voiceError);
+          // Don't fail the entire message if voice fails
+        }
+      }
     } catch (error) {
       console.error("Error processing query:", error);
       const errorMessage: Message = {
@@ -335,6 +360,9 @@ export default function ChatScreen() {
         >
           <Text style={styles.headerTitle}>Health AI</Text>
           <View style={styles.statusDot} />
+          {isVoiceEnabled && (
+            <Ionicons name="volume-high" size={14} color="#007AFF" />
+          )}
           <Ionicons name="chevron-down" size={16} color="#8E8E93" />
         </TouchableOpacity>
 
