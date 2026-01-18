@@ -45,8 +45,8 @@ const STATE_COLORS: Record<VoiceState, string> = {
 
 // State-specific labels
 const STATE_LABELS: Record<VoiceState, string> = {
-  idle: "Tap to speak",
-  listening: "Tap mic to send",
+  idle: "Tap mic to speak",
+  listening: "Recording... Tap to send",
   processing: "Thinking...",
   speaking: "Speaking...",
 };
@@ -77,29 +77,6 @@ export function VoiceChatOverlay({
     }).start();
   }, [visible, fadeAnim]);
 
-  // Pulse animation for listening/speaking states
-  useEffect(() => {
-    if (voiceState === "listening" || voiceState === "speaking") {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.15,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      pulse.start();
-      return () => pulse.stop();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [voiceState, pulseAnim]);
 
   // Waveform animation based on audio level
   useEffect(() => {
@@ -148,33 +125,47 @@ export function VoiceChatOverlay({
 
       {/* Center Content */}
       <View style={styles.centerContent}>
-        {/* Mascot - Tappable when listening to stop and send */}
-        <TouchableOpacity
-          activeOpacity={voiceState === "listening" ? 0.7 : 1}
-          onPress={voiceState === "listening" ? onMicPress : undefined}
-          disabled={voiceState !== "listening"}
+        {/* Mascot */}
+        <Animated.View
+          style={[
+            styles.mascotContainer,
+            {
+              transform: [{ scale: pulseAnim }],
+            },
+          ]}
         >
-          <Animated.View
-            style={[
-              styles.mascotContainer,
-              {
-                transform: [{ scale: pulseAnim }],
-              },
-            ]}
-          >
-            <Image
-              source={
-                voiceState === "speaking"
-                  ? MASCOT_TALKING
-                  : voiceState === "processing"
-                  ? MASCOT_THINKING
-                  : MASCOT_IDLE
-              }
-              style={styles.mascotImage}
-              contentFit="contain"
-              autoplay={true}
-            />
-          </Animated.View>
+          <Image
+            source={
+              voiceState === "speaking"
+                ? MASCOT_TALKING
+                : voiceState === "processing"
+                ? MASCOT_THINKING
+                : MASCOT_IDLE
+            }
+            style={styles.mascotImage}
+            contentFit="contain"
+            autoplay={true}
+          />
+        </Animated.View>
+
+        {/* Mic Button */}
+        <TouchableOpacity
+          style={[
+            styles.micButton,
+            { 
+              backgroundColor: color,
+              opacity: voiceState === "processing" ? 0.6 : 1,
+            }
+          ]}
+          onPress={onMicPress}
+          disabled={voiceState === "processing"}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={voiceState === "listening" ? "stop" : "mic"}
+            size={28}
+            color="#fff"
+          />
         </TouchableOpacity>
 
         {/* Waveform Bars */}
@@ -239,13 +230,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   mascotContainer: {
-    marginBottom: 40,
+    marginBottom: 24,
     alignItems: "center",
     justifyContent: "center",
   },
   mascotImage: {
     width: 200,
     height: 200,
+  },
+  micButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 32,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   waveformContainer: {
     flexDirection: "row",
