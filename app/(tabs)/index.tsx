@@ -10,8 +10,11 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 
 export default function Index() {
+  const router = useRouter();
   const date = new Date();
   const {
     steps,
@@ -142,6 +145,32 @@ export default function Index() {
     }
   };
 
+  const handleResetOnboarding = async () => {
+    Alert.alert(
+      "Reset Onboarding",
+      "This will clear all saved data and return to onboarding",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear();
+              router.replace("/onboarding/welcome");
+            } catch (error) {
+              Alert.alert("Error", "Failed to reset onboarding");
+              console.error(error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const formatTimestamp = (timestamp: string | null) => {
     if (!timestamp) return "Not synced";
     const date = new Date(timestamp);
@@ -245,6 +274,7 @@ export default function Index() {
             "Manage your health data permissions",
             [
               { text: "Open Settings", onPress: handleRevokeAccess },
+              { text: "Reset Onboarding", onPress: handleResetOnboarding, style: "destructive" },
               { text: "Cancel", style: "cancel" },
             ]
           );
