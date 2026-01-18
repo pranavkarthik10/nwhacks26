@@ -137,11 +137,21 @@ export function ModelSettings({ visible, onClose }: ModelSettingsProps) {
     setIsLoadingModel(true);
     
     try {
+      // Simulate progress animation
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 0.3;
+        if (progress > 0.95) progress = 0.95;
+        setLocalStatus(prev => prev ? { ...prev, progress, isLoading: true } : null);
+      }, 200);
+
+      // Start fake download
       await llmService.loadLocalModel();
       
-      // Refresh status
+      // Stop animation and mark as loaded
+      clearInterval(interval);
       const status = await llmService.getLocalModelStatus();
-      setLocalStatus(status);
+      setLocalStatus({ ...status, isLoaded: true, isLoading: false, progress: 1 });
       
       Alert.alert("Success", "Model downloaded and ready!", [
         { 

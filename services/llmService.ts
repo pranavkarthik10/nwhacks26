@@ -17,6 +17,7 @@ const NativeLocalLLM = Platform.OS === "ios" ? NativeModules.LocalLLMService : n
 
 // Storage keys
 const LLM_PROVIDER_KEY = "@llm_provider";
+const LOCAL_MODEL_LOADED_KEY = "@local_model_loaded";
 
 // Provider types
 export type LLMProvider = "gemini" | "local";
@@ -47,6 +48,7 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 class LLMService {
   private config: LLMConfig = DEFAULT_CONFIG;
   private isInitialized = false;
+  private localModelLoaded = false;
 
   // Initialize and load saved config
   async initialize(): Promise<void> {
@@ -54,9 +56,14 @@ class LLMService {
 
     try {
       const provider = await AsyncStorage.getItem(LLM_PROVIDER_KEY);
+      const modelLoaded = await AsyncStorage.getItem(LOCAL_MODEL_LOADED_KEY);
 
       if (provider) {
         this.config.provider = provider as LLMProvider;
+      }
+
+      if (modelLoaded) {
+        this.localModelLoaded = JSON.parse(modelLoaded);
       }
 
       this.isInitialized = true;
@@ -109,9 +116,9 @@ class LLMService {
     // FAKE MODE: Return fake status when native module is not available
     return {
       available: true,
-      isLoaded: false,
+      isLoaded: this.localModelLoaded,
       isLoading: false,
-      progress: 0,
+      progress: this.localModelLoaded ? 1 : 0,
       error: null,
       modelId: "mlx-community/Qwen2.5-3B-Instruct-4bit",
     };
@@ -133,7 +140,10 @@ class LLMService {
     // FAKE MODE: Simulate download with fake progress
     console.log("📥 [FAKE MODE] Starting fake model download...");
     return new Promise((resolve) => {
-      setTimeout(() => {
+      setTimeout(async () => {
+        this.localModelLoaded = true;
+        await AsyncStorage.setItem(LOCAL_MODEL_LOADED_KEY, JSON.stringify(true));
+        console.log("✅ [FAKE MODE] Model marked as loaded");
         resolve({ success: true, message: "Model loaded successfully (fake mode)" });
       }, 1500);
     });
@@ -143,8 +153,10 @@ class LLMService {
   async unloadLocalModel(): Promise<void> {
     if (NativeLocalLLM) {
       await NativeLocalLLM.unloadModel();
-      console.log("🧹 Local model unloaded");
     }
+    this.localModelLoaded = false;
+    await AsyncStorage.setItem(LOCAL_MODEL_LOADED_KEY, JSON.stringify(false));
+    console.log("🧹 Local model unloaded");
   }
 
   // ==================== GENERATION METHODS ====================

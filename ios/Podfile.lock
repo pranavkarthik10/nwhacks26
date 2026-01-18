@@ -207,7 +207,7 @@ PODS:
     - ExpoModulesCore
   - ExpoBlur (15.0.8):
     - ExpoModulesCore
-  - ExpoFileSystem (19.0.21):
+  - ExpoFileSystem (19.0.15):
     - ExpoModulesCore
   - ExpoFont (14.0.8):
     - ExpoModulesCore
@@ -2605,7 +2605,7 @@ SPEC CHECKSUMS:
   expo-dev-menu-interface: 600df12ea01efecdd822daaf13cc0ac091775533
   ExpoAsset: 9ba6fbd677fb8e241a3899ac00fa735bc911eadf
   ExpoBlur: b90747a3f22a8b6ceffd9cb0dc41a4184efdc656
-  ExpoFileSystem: 858a44267a3e6e9057e0888ad7c7cfbf55d52063
+  ExpoFileSystem: 5fb091ea11198e109ceef2bdef2e6e66523e62c4
   ExpoFont: 86ceec09ffed1c99cfee36ceb79ba149074901b5
   ExpoHaptics: 807476b0c39e9d82b7270349d6487928ce32df84
   ExpoHead: 5570e5edbe54fd8f88e51e8b94bf2931caaa7363

@@ -257,24 +257,58 @@ function prepareChartData(toolResults: any, chartType: "line" | "bar" | null) {
     if (resultWithSamples.name.includes("Sleep")) {
       // Aggregate sleep by END day (sleep that ends on a day counts for that day)
       // This handles sleep that crosses midnight properly
-      const sleepByDay: { [key: string]: number } = {};
+      // Group sleep samples by day, then merge overlaps to avoid double-counting
+      const sleepSamplesByDay: { [key: string]: Array<{ start: number; end: number }> } = {};
       
       console.log(`Processing ${allSamples.length} sleep samples`);
       
+      // First, group all sleep samples by their END date
       allSamples.forEach((s: any) => {
         if (s.value !== "AWAKE") {
-          // Use END date for grouping (when sleep session ended)
           const endDate = new Date(s.endDate);
           const dayKey = format(endDate, "yyyy-MM-dd");
           
           const start = new Date(s.startDate).getTime();
           const end = new Date(s.endDate).getTime();
-          const durationHours = (end - start) / (1000 * 60 * 60);
           
-          console.log(`Sleep: ${dayKey} duration: ${durationHours.toFixed(2)}h start: ${new Date(s.startDate).toISOString()} end: ${new Date(s.endDate).toISOString()}`);
+          if (!sleepSamplesByDay[dayKey]) {
+            sleepSamplesByDay[dayKey] = [];
+          }
+          sleepSamplesByDay[dayKey].push({ start, end });
           
-          sleepByDay[dayKey] = (sleepByDay[dayKey] || 0) + durationHours;
+          console.log(`Sleep: ${dayKey} start: ${new Date(s.startDate).toISOString()} end: ${new Date(s.endDate).toISOString()}`);
         }
+      });
+
+      // Now merge overlapping sleep periods for each day
+      const sleepByDay: { [key: string]: number } = {};
+      Object.keys(sleepSamplesByDay).forEach(dayKey => {
+        const ranges = sleepSamplesByDay[dayKey];
+        
+        // Sort by start time
+        ranges.sort((a, b) => a.start - b.start);
+        
+        // Merge overlapping ranges
+        const merged: Array<{ start: number; end: number }> = [ranges[0]];
+        for (let i = 1; i < ranges.length; i++) {
+          const current = ranges[i];
+          const lastMerged = merged[merged.length - 1];
+          
+          if (current.start <= lastMerged.end) {
+            // Overlapping, extend the last merged range
+            lastMerged.end = Math.max(lastMerged.end, current.end);
+          } else {
+            // No overlap, add as new range
+            merged.push(current);
+          }
+        }
+        
+        // Calculate total hours from merged ranges
+        const totalMs = merged.reduce((sum, range) => sum + (range.end - range.start), 0);
+        const totalHours = totalMs / (1000 * 60 * 60);
+        sleepByDay[dayKey] = totalHours;
+        
+        console.log(`Sleep for ${dayKey}: ${ranges.length} samples -> ${merged.length} merged -> ${totalHours.toFixed(2)}h`);
       });
 
       console.log("Sleep aggregated by day:", sleepByDay);

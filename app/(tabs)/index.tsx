@@ -46,6 +46,7 @@ export default function Index() {
 
   // Calculate total sleep duration (in hours) for TODAY only
   // Only count sleep that ended TODAY (handles midnight crossings)
+  // Merges overlapping sleep periods to avoid double-counting
   const getTotalSleep = (sleepSamples: any[]) => {
     if (!sleepSamples.length) return "--";
 
@@ -53,7 +54,8 @@ export default function Index() {
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
     const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).getTime();
 
-    let totalMs = 0;
+    // Filter and convert sleep samples to time ranges
+    const sleepRanges: Array<{ start: number; end: number }> = [];
     sleepSamples.forEach((sample) => {
       if (sample.value !== "AWAKE") {
         const endTime = new Date(sample.endDate).getTime();
@@ -62,9 +64,36 @@ export default function Index() {
         if (endTime >= todayStart && endTime < todayEnd) {
           const start = new Date(sample.startDate).getTime();
           const end = endTime;
-          totalMs += end - start;
+          sleepRanges.push({ start, end });
         }
       }
+    });
+
+    if (sleepRanges.length === 0) return "--";
+
+    // Sort by start time
+    sleepRanges.sort((a, b) => a.start - b.start);
+
+    // Merge overlapping ranges to avoid double-counting
+    const merged: Array<{ start: number; end: number }> = [sleepRanges[0]];
+    
+    for (let i = 1; i < sleepRanges.length; i++) {
+      const current = sleepRanges[i];
+      const lastMerged = merged[merged.length - 1];
+      
+      // If current overlaps with last merged, extend the last merged
+      if (current.start <= lastMerged.end) {
+        lastMerged.end = Math.max(lastMerged.end, current.end);
+      } else {
+        // No overlap, add as new range
+        merged.push(current);
+      }
+    }
+
+    // Calculate total duration from merged ranges
+    let totalMs = 0;
+    merged.forEach(range => {
+      totalMs += range.end - range.start;
     });
 
     const hours = totalMs / (1000 * 60 * 60);

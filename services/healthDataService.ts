@@ -133,14 +133,40 @@ export async function getSleep(dateRange: DateRange): Promise<HealthDataResponse
       if (err) {
         resolve({ success: false, error: err });
       } else {
-        let totalSleepMs = 0;
+        // Convert sleep samples to time ranges (excluding AWAKE periods)
+        const sleepRanges: Array<{ start: number; end: number }> = [];
         results.forEach((sample) => {
           if (sample.value !== "AWAKE") {
             const start = new Date(sample.startDate).getTime();
             const end = new Date(sample.endDate).getTime();
-            totalSleepMs += end - start;
+            sleepRanges.push({ start, end });
           }
         });
+
+        // Sort by start time
+        sleepRanges.sort((a, b) => a.start - b.start);
+
+        // Merge overlapping ranges to avoid double-counting
+        let totalSleepMs = 0;
+        if (sleepRanges.length > 0) {
+          const merged: Array<{ start: number; end: number }> = [sleepRanges[0]];
+          
+          for (let i = 1; i < sleepRanges.length; i++) {
+            const current = sleepRanges[i];
+            const lastMerged = merged[merged.length - 1];
+            
+            // If current overlaps with last merged, extend the last merged
+            if (current.start <= lastMerged.end) {
+              lastMerged.end = Math.max(lastMerged.end, current.end);
+            } else {
+              // No overlap, add as new range
+              merged.push(current);
+            }
+          }
+
+          // Calculate total duration from merged ranges
+          totalSleepMs = merged.reduce((sum, range) => sum + (range.end - range.start), 0);
+        }
         
         const totalHours = totalSleepMs / (1000 * 60 * 60);
         resolve({ 

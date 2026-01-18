@@ -10,7 +10,7 @@
  */
 
 import { Audio, AVPlaybackStatus } from "expo-av";
-import { Paths, File } from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 // ElevenLabs API configuration
 const ELEVENLABS_API_KEY = process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY || "";
@@ -258,9 +258,9 @@ class SpeechService {
     try {
       console.log("📝 Transcribing audio...");
 
-      // Check if the audio file exists using the new File API
-      const audioFile = new File(uri);
-      if (!audioFile.exists) {
+      // Check if the audio file exists
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      if (!fileInfo.exists) {
         throw new Error("Audio file not found");
       }
 
@@ -340,10 +340,7 @@ class SpeechService {
       // Get the audio blob
       const audioBlob = await response.blob();
       
-      // Save to file system using new expo-file-system API
-      const file = new File(Paths.cache, `tts_${Date.now()}.mp3`);
-      
-      // Convert blob to base64 and save
+      // Convert blob to base64
       const reader = new FileReader();
       const base64 = await new Promise<string>((resolve, reject) => {
         reader.onloadend = () => {
@@ -356,11 +353,14 @@ class SpeechService {
         reader.readAsDataURL(audioBlob);
       });
 
-      // Write base64 content to file
-      await file.write(base64, { encoding: "base64" });
+      // Save to file system using FileSystem API
+      const fileUri = `${FileSystem.cacheDirectory}tts_${Date.now()}.mp3`;
+      await FileSystem.writeAsStringAsync(fileUri, base64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
 
-      console.log("🔊 Speech synthesized:", file.uri);
-      return file.uri;
+      console.log("🔊 Speech synthesized:", fileUri);
+      return fileUri;
     } catch (error) {
       console.error("Error synthesizing speech:", error);
       throw error;
